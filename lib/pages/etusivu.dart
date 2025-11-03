@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 class Etusivu extends StatelessWidget {
@@ -16,7 +18,10 @@ class Etusivu extends StatelessWidget {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Etusivu'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Tilastot'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Tilastot',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Terveys'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profiili'),
         ],
@@ -36,7 +41,11 @@ class Etusivu extends StatelessWidget {
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.notifications, color: Colors.blue, size: 25),
+                    icon: const Icon(
+                      Icons.notifications,
+                      color: Colors.blue,
+                      size: 25,
+                    ),
                     tooltip: 'Ilmoitukset',
                     onPressed: () {},
                   ),
@@ -47,7 +56,11 @@ class Etusivu extends StatelessWidget {
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.settings, color: Colors.blue, size: 25),
+                    icon: const Icon(
+                      Icons.settings,
+                      color: Colors.blue,
+                      size: 25,
+                    ),
                     tooltip: 'Asetukset',
                     onPressed: () {},
                   ),
@@ -71,7 +84,7 @@ class Etusivu extends StatelessWidget {
                         maxHeight: double.infinity,
                         child: Container(
                           margin: const EdgeInsets.only(top: topOffset),
-                          width: 2000,  // can be any size now
+                          width: 2000, // can be any size now
                           height: 2000, // can be any size now
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
@@ -92,7 +105,9 @@ class Etusivu extends StatelessWidget {
                             prefixIcon: const Icon(Icons.search),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                               borderSide: BorderSide.none,
@@ -130,7 +145,8 @@ class Etusivu extends StatelessWidget {
                                     child: Container(
                                       color: Colors.white,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Image.asset(
                                             'assets/article.jpg',
@@ -144,12 +160,21 @@ class Etusivu extends StatelessWidget {
                                               'Influenssarokote tehokkain suoja influenssaa ja sen jälkitauteja vastaan',
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontWeight: FontWeight.w600),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                           const Padding(
-                                            padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                            child: Text('20.10.2025', style: TextStyle(color: Colors.grey)),
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8.0,
+                                            ),
+                                            child: Text(
+                                              '20.10.2025',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -184,16 +209,29 @@ class Etusivu extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: const [
-                            Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 40),
+                            Icon(
+                              Icons.local_fire_department,
+                              color: Colors.deepOrange,
+                              size: 40,
+                            ),
                             Icon(Icons.bolt, color: Colors.green, size: 40),
-                            Icon(Icons.water_drop, color: Colors.blue, size: 40),
+                            Icon(
+                              Icons.water_drop,
+                              color: Colors.blue,
+                              size: 40,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 30),
 
                         // Recommended Challenges
-                        const Text('Sinulle suositellut haasteet', 
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Sinulle suositellut haasteet',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -204,16 +242,29 @@ class Etusivu extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
                                 ),
                                 child: const Padding(
                                   padding: EdgeInsets.all(12),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('Kävelyhaaste', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      Text(
+                                        'Kävelyhaaste',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       SizedBox(height: 8),
-                                      Text('Kävele 10 000 askelta joka päivä viikon ajan'),
+                                      Text(
+                                        'Kävele 10 000 askelta joka päivä viikon ajan',
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -225,16 +276,29 @@ class Etusivu extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
                                 ),
                                 child: const Padding(
                                   padding: EdgeInsets.all(12),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('Juomahaaste', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      Text(
+                                        'Juomahaaste',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       SizedBox(height: 8),
-                                      Text('Juo 5 lasia vettä joka päivä viikon ajan'),
+                                      Text(
+                                        'Juo 5 lasia vettä joka päivä viikon ajan',
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -245,8 +309,13 @@ class Etusivu extends StatelessWidget {
                         const SizedBox(height: 30),
 
                         // Articles categories
-                        const Text('Artikkelit', 
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Artikkelit',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -254,7 +323,10 @@ class Etusivu extends StatelessWidget {
                             CategoryChip(icon: Icons.bedtime, label: 'Uni'),
                             CategoryChip(icon: Icons.apple, label: 'Ravinto'),
                             CategoryChip(icon: Icons.favorite, label: 'Sydän'),
-                            CategoryChip(icon: Icons.flash_on, label: 'Energia'),
+                            CategoryChip(
+                              icon: Icons.flash_on,
+                              label: 'Energia',
+                            ),
                           ],
                         ),
 
