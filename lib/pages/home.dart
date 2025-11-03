@@ -7,6 +7,15 @@ class Homepage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const WelcomePage();
+  }
+}
+
+class WelcomePage extends StatelessWidget {
+  const WelcomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
