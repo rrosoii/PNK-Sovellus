@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pnksovellus/pages/log-in.dart';
+import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/pages/luo-tili.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
 
 class Homepage extends StatelessWidget {
   const Homepage({super.key});
@@ -143,7 +144,12 @@ class WelcomePage extends StatelessWidget {
                 // secondary bottom action
                 Center(
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => Etusivu()),
+                      );
+                    },
                     child: Text(
                       'Selaa kirjautumatta >',
                       style: TextStyle(
