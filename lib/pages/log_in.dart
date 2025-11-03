@@ -26,7 +26,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _passwordVisible = false;
-  bool _emailVisible = true;
+  final bool _emailVisible = true;
 
   @override
   Widget build(BuildContext context) {

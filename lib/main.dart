@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'pages/home.dart';
-import 'pages/etusivu.dart';
 
 void main() {
   runApp(const MyApp());
