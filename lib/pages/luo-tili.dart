@@ -1,32 +1,30 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
-import 'package:pnksovellus/pages/luo-tili.dart';
 
-void main() => runApp(const Login());
-
-class Login extends StatelessWidget {
-  const Login({super.key});
+class Luotili extends StatelessWidget {
+  const Luotili({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+      home: SignUpPage(),
     );
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _SignUpPageState extends State<SignUpPage> {
   bool _passwordVisible = false;
-  final bool _emailVisible = true;
+  bool _confirmVisible = false;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +45,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
               const Center(
                 child: Text(
-                  "Tervetuloa takaisin!",
+                  "Tervetuloa!",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -56,13 +54,14 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 40),
+              const Text("Koko nimi"),
+              const SizedBox(height: 8),
+              TextField(decoration: _inputDecoration("Matti Meikäläinen")),
+              const SizedBox(height: 20),
               const Text("Email"),
               const SizedBox(height: 8),
               TextField(
-                obscureText: !_emailVisible,
-                decoration: _inputDecoration(
-                  "matti.meikalainen@gmail.com",
-                ).copyWith(),
+                decoration: _inputDecoration("matti.meikalainen@gmail.com"),
               ),
               const SizedBox(height: 20),
               const Text("Salasana"),
@@ -78,6 +77,21 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     onPressed: () =>
                         setState(() => _passwordVisible = !_passwordVisible),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text("Salasanan varmistus"),
+              const SizedBox(height: 8),
+              TextField(
+                obscureText: !_confirmVisible,
+                decoration: _inputDecoration("************").copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _confirmVisible ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _confirmVisible = !_confirmVisible),
                   ),
                 ),
               ),
@@ -99,7 +113,7 @@ class _LoginPageState extends State<LoginPage> {
                     );
                   },
                   child: const Text(
-                    "Kirjaudu sisään",
+                    "Luo tili",
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
@@ -108,24 +122,15 @@ class _LoginPageState extends State<LoginPage> {
               Center(
                 child: RichText(
                   text: TextSpan(
-                    text: "Puuttuuko sinulta tili? ",
+                    text: "Onko sinulla jo tili? ",
                     style: const TextStyle(color: Colors.black87),
                     children: [
                       TextSpan(
-                        text: "Luo tili",
+                        text: "Kirjaudu sisään.",
                         style: TextStyle(
-                          color: const Color(0xFF3066BE),
+                          color: primaryColor,
                           fontWeight: FontWeight.bold,
                         ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => (Luotili()),
-                              ),
-                            );
-                          },
                       ),
                     ],
                   ),

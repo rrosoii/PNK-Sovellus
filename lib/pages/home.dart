@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const Homepage());
-}
+import 'package:pnksovellus/pages/log_in.dart';
+import 'package:pnksovellus/pages/luo-tili.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
 
 class Homepage extends StatelessWidget {
   const Homepage({super.key});
@@ -18,88 +17,154 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFE6ECF9), // Light blue background
+      backgroundColor: const Color.fromARGB(255, 227, 235, 253),
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Image.asset(
-                'assets/logo.png', // replace with your logo file
-                height: 150,
-              ),
-
-              const SizedBox(height: 20),
-
-              // Welcome text
-              const Text(
-                'Tervetuloa!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF002366),
+        child: Stack(
+          children: [
+            // decorative circles top-left
+            Positioned(
+              top: -30,
+              left: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(46, 90, 172, 0.18),
+                  shape: BoxShape.circle,
                 ),
               ),
+            ),
+            Positioned(
+              top: -30,
+              left: 45,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(46, 90, 172, 0.14),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
 
-              const SizedBox(height: 40),
+            // main content
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // push content down so buttons/texts aren't too high
+                const SizedBox(height: 120),
 
-              // "Luo tili" button
-              SizedBox(
-                width: 200,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate to sign-up screen
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E5AAC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                // logo
+                Center(
+                  child: Image.asset(
+                    'lib/images/pnk-sininen-fi.png',
+                    height: 250,
                   ),
-                  child: const Text(
-                    'Luo tili',
+                ),
+
+                const SizedBox(height: 18),
+
+                // welcome text
+                const Center(
+                  child: Text(
+                    'Tervetuloa!',
                     style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
+                      color: Color.fromRGBO(13, 59, 128, 1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 30,
                     ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 80),
 
-              // Already have an account text
-              const Text.rich(
-                TextSpan(
-                  text: 'Onko sinulla jo tili? ',
-                  style: TextStyle(color: Colors.black54),
-                  children: [
-                    TextSpan(
-                      text: 'Kirjaudu sisään.',
-                      style: TextStyle(
-                        color: Color(0xFF2E5AAC),
-                        fontWeight: FontWeight.bold,
+                // primary button
+                Center(
+                  child: SizedBox(
+                    width: screenWidth * 0.67,
+                    height: 55,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E5AAC),
+                        shape: const StadiumBorder(),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => Luotili()),
+                        );
+                      },
+                      child: const Text(
+                        'Luo tili',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 6),
 
-              // Browse without logging in
-              const Text(
-                'Selaa kirjautumatta >',
-                style: TextStyle(
-                  color: Colors.black38,
-                  fontSize: 16,
+                // small prompt + login
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Onko sinulla jo tili ?',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                      const SizedBox(width: 0),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => Login()),
+                          );
+                        },
+                        child: const Text(
+                          'Kirjaudu sisään.',
+                          style: TextStyle(
+                            color: Color.fromRGBO(13, 59, 128, 1),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+
+                // secondary bottom action
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => Etusivu()),
+                      );
+                    },
+                    child: Text(
+                      'Selaa kirjautumatta >',
+                      style: TextStyle(
+                        color: const Color.fromARGB(255, 110, 111, 118),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+              ],
+            ),
+          ],
         ),
       ),
     );
