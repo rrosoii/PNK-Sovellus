@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/pages/luo-tili.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
@@ -113,31 +114,29 @@ class WelcomePage extends StatelessWidget {
 
                 // small prompt + login
                 Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Onko sinulla jo tili ?',
-                        style: TextStyle(fontSize: 14, color: Colors.black54),
-                      ),
-                      const SizedBox(width: 0),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => Login()),
-                          );
-                        },
-                        child: const Text(
-                          'Kirjaudu sisään.',
+                  child: RichText(
+                    text: TextSpan(
+                      text: "Onko sinulla jo tili? ",
+                      style: const TextStyle(color: Colors.black87),
+                      children: [
+                        TextSpan(
+                          text: "Kirjaudu sisään",
                           style: TextStyle(
-                            color: Color.fromRGBO(13, 59, 128, 1),
+                            color: const Color(0xFF3066BE),
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
                           ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => (Login()),
+                                ),
+                              );
+                            },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
 

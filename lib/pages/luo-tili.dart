@@ -1,7 +1,9 @@
 // ignore_for_file: file_names
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
+import 'package:pnksovellus/pages/home.dart';
+import 'package:pnksovellus/pages/log_in.dart';
 
 class Luotili extends StatelessWidget {
   const Luotili({super.key});
@@ -40,7 +42,12 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 16),
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => (Homepage())),
+                  );
+                },
               ),
               const SizedBox(height: 20),
               const Center(
@@ -126,11 +133,20 @@ class _SignUpPageState extends State<SignUpPage> {
                     style: const TextStyle(color: Colors.black87),
                     children: [
                       TextSpan(
-                        text: "Kirjaudu sisään.",
+                        text: "Kirjaudu sisään",
                         style: TextStyle(
-                          color: primaryColor,
+                          color: const Color(0xFF3066BE),
                           fontWeight: FontWeight.bold,
                         ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => (Login()),
+                              ),
+                            );
+                          },
                       ),
                     ],
                   ),

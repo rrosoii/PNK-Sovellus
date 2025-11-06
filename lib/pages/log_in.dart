@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
+import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/luo-tili.dart';
 
 void main() => runApp(const Login());
@@ -42,7 +43,12 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16),
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Homepage()),
+                  );
+                },
               ),
               const SizedBox(height: 20),
               const Center(
