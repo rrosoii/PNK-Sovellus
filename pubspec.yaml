@@ -57,9 +57,9 @@ flutter:
   
   assets:
     - lib/images/pnk-sininen-fi.png
-    - assets/icons/sadlissu.png
+    - assets/icons/lissusad.png
     - assets/icons/lissufaded.png
-    - assets/icons/lisusus.png
+    - assets/icons/lissuhappy.png
     - assets/icons/waterglass.png
 
   #   - images/a_dot_ham.jpeg

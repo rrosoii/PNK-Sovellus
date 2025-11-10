@@ -86,9 +86,9 @@ class _TrackerPageState extends State<TrackerPage> {
                     children: List.generate(3, (index) {
                       final colors = [Colors.blue, Colors.grey, Colors.green];
                       final moodIcons = [
-                        'assets/icons/lisusus.png',
+                        'assets/icons/lissusad.png',
                         'assets/icons/lissufaded.png',
-                        'assets/icons/sadlissu.png',
+                        'assets/icons/lissuhappy.png',
                       ];
 
                       return GestureDetector(

@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:pnksovellus/pages/asetukset.dart';
 import 'omaterveys.dart';
 
 class Etusivu extends StatefulWidget {
@@ -292,11 +293,20 @@ class _EtusivuState extends State<Etusivu> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
         offset: const Offset(0, 40),
+        onSelected: (value) {
+          if (value == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AsetuksetPage()),
+            );
+          }
+        },
         itemBuilder: (context) => [
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 1,
             child: Row(
-              children: const [
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Icon(
                   Icons.person_outline,
                   color: Color.fromARGB(255, 72, 78, 133),
@@ -309,10 +319,11 @@ class _EtusivuState extends State<Etusivu> {
               ],
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 2,
             child: Row(
-              children: const [
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Icon(
                   Icons.settings_outlined,
                   color: Color.fromARGB(255, 72, 78, 133),
