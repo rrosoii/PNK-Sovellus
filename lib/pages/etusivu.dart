@@ -43,7 +43,12 @@ class _EtusivuState extends State<Etusivu> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        90,
+                      ), // <-- bottom padding added
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -282,25 +287,11 @@ class _EtusivuState extends State<Etusivu> {
 
   Widget _buildIconButton(IconData icon, String tooltip) {
     if (icon == Icons.settings) {
-      // The settings icon becomes a popup menu
       return PopupMenuButton<int>(
         icon: const Icon(Icons.settings, color: Colors.blue, size: 25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
         offset: const Offset(0, 40),
-        onSelected: (value) {
-          if (value == 1) {
-            // Navigate to profile (replace with your actual page)
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Avaan Profiili-sivun...')),
-            );
-          } else if (value == 2) {
-            // Navigate to settings page
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Avaan Asetukset-sivun...')),
-            );
-          }
-        },
         itemBuilder: (context) => [
           PopupMenuItem(
             value: 1,
@@ -337,7 +328,6 @@ class _EtusivuState extends State<Etusivu> {
         ],
       );
     } else {
-      // Notification icon stays the same
       return Stack(
         children: [
           IconButton(
@@ -397,7 +387,6 @@ class _EtusivuState extends State<Etusivu> {
       onTap: () {
         setState(() => _selectedIndex = index);
         if (index == 2) {
-          // Health page
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const TrackerPage()),
