@@ -86,7 +86,7 @@ class _TrackerPageState extends State<TrackerPage> {
                     children: List.generate(3, (index) {
                       final colors = [Colors.blue, Colors.grey, Colors.green];
                       final moodIcons = [
-                        'assets/icons/happylissu.png',
+                        'assets/icons/lisusus.png',
                         'assets/icons/lissufaded.png',
                         'assets/icons/sadlissu.png',
                       ];
@@ -106,8 +106,8 @@ class _TrackerPageState extends State<TrackerPage> {
                                 : Colors.white,
                             child: Image.asset(
                               moodIcons[index], // ✅ Correctly using Image.asset
-                              width: 24,
-                              height: 24,
+                              width: 40,
+                              height: 40,
                             ),
                           ),
                         ),
@@ -174,8 +174,8 @@ class _TrackerPageState extends State<TrackerPage> {
                       bgColor = mood == 0
                           ? Colors.blue.withOpacity(0.5)
                           : mood == 1
-                              ? Colors.grey.withOpacity(0.5)
-                              : Colors.green.withOpacity(0.5);
+                          ? Colors.grey.withOpacity(0.5)
+                          : Colors.green.withOpacity(0.5);
                     }
                     return GestureDetector(
                       onTap: () {
