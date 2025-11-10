@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AsetuksetPage extends StatefulWidget {
   const AsetuksetPage({super.key});
@@ -8,144 +11,296 @@ class AsetuksetPage extends StatefulWidget {
 }
 
 class _AsetuksetPageState extends State<AsetuksetPage> {
-  bool notificationsEnabled = true;
+  File? _avatarImage;
+  final ImagePicker _picker = ImagePicker();
+  bool ilmoitukset = true;
+  String _username = "Lissu"; // default username
+
+  final double innerPadding = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatarPath();
+    _loadUsername();
+  }
+
+  /// Load saved username
+  Future<void> _loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString('username');
+    if (savedName != null && savedName.isNotEmpty) {
+      setState(() {
+        _username = savedName;
+      });
+    }
+  }
+
+  /// Save username
+  Future<void> _saveUsername(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', name);
+  }
+
+  /// Show dialog to edit username
+  void _editUsername() {
+    final controller = TextEditingController(text: _username);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Muokkaa nimeä"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: "Syötä uusi nimi"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("Peruuta"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                setState(() => _username = newName);
+                _saveUsername(newName);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text("Tallenna"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Pick avatar from camera or gallery
+  Future<void> _pickAvatar(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(source: source, maxWidth: 600);
+    if (pickedFile != null) {
+      setState(() {
+        _avatarImage = File(pickedFile.path);
+      });
+      _saveAvatarPath(pickedFile.path);
+    }
+  }
+
+  /// Show bottom sheet to choose image source
+  void _showImagePickerDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Valitse galleriasta'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickAvatar(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Ota kuva'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickAvatar(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Save avatar path
+  Future<void> _saveAvatarPath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('avatar_path', path);
+  }
+
+  /// Load avatar path
+  Future<void> _loadAvatarPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString('avatar_path');
+    if (path != null && File(path).existsSync()) {
+      setState(() {
+        _avatarImage = File(path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFF4FF),
-      body: Column(
+      body: Stack(
         children: [
-          // Header
+          // Blue gradient header
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(
-              top: 60,
-              left: 16,
-              right: 16,
-              bottom: 24,
-            ),
+            height: 150,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF2962FF), Color(0xFF0039CB)],
+                colors: [
+                  Color.fromARGB(255, 34, 77, 156),
+                  Color.fromARGB(255, 13, 59, 118),
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
             ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: 10,
+                  left: 16,
+                  right: 16,
+                  bottom: 10,
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.settings, color: Colors.white, size: 28),
-                const SizedBox(width: 8),
-                const Text(
-                  "Asetukset",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                    SizedBox(width: 4),
+                    Icon(Icons.settings, color: Colors.white, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      'Asetukset',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
 
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User section
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+          // Main content container
+          SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 100, left: 16, right: 16),
+            child: Container(
+              height: 1000,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(innerPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile header
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: innerPadding * 0.2,
+                        top: innerPadding * 0.5,
+                        bottom: innerPadding * 0.2,
+                      ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.blue[100],
-                            backgroundImage: const AssetImage(
-                              'assets/icons/happylissu.png',
+                          GestureDetector(
+                            onTap: _showImagePickerDialog,
+                            child: CircleAvatar(
+                              radius: 35,
+                              backgroundColor: const Color(0xFFEFF4FF),
+                              backgroundImage: _avatarImage != null
+                                  ? FileImage(_avatarImage!)
+                                  : const AssetImage('assets/avatar.png')
+                                        as ImageProvider,
+                              child: _avatarImage == null
+                                  ? const Icon(
+                                      Icons.add_a_photo,
+                                      color: Colors.grey,
+                                      size: 25,
+                                    )
+                                  : null,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            "Lissu",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          SizedBox(width: innerPadding * 0.8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  _username,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF485885),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: _editUsername,
+                                  child: const Icon(
+                                    Icons.edit,
+                                    size: 20,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 24),
+                    SizedBox(height: innerPadding * 1.5),
+                    const Divider(height: 1, color: Color(0xFFE5E5E5)),
 
-                  const Text(
-                    "Käyttäjäasetukset",
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
+                    SizedBox(height: innerPadding * 1),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: innerPadding * 0.5,
+                        bottom: innerPadding * 0.4,
+                      ),
+                      child: const Text(
+                        "Käyttäjäasetukset",
+                        style: TextStyle(
+                          color: Color(0xFFB2B2B2),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    _buildRow("Muokkaa profiilia", Icons.chevron_right),
+                    _buildRow("Vaihda salasana", Icons.chevron_right),
+                    _buildRow("Lisää maksutapa", Icons.add),
+                    _buildSwitchRow("Ilmoitukset"),
 
-                  _buildSettingsTile("Muokkaa profiilia", Icons.person_outline),
-                  _buildSettingsTile("Vaihda salasana", Icons.lock_outline),
-                  _buildSettingsTile("Lisää maksutapa", Icons.add),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: Colors.blue,
-                    title: const Text("Ilmoitukset"),
-                    value: notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        notificationsEnabled = value;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  const Text(
-                    "Lisää",
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
+                    SizedBox(height: innerPadding),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: innerPadding * 0.5,
+                        bottom: innerPadding * 0.4,
+                      ),
+                      child: const Text(
+                        "Lisää",
+                        style: TextStyle(
+                          color: Color(0xFFB2B2B2),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  _buildSettingsTile("Tietoa meistä", Icons.info_outline),
-                  _buildSettingsTile(
-                    "Tietosuojakäytäntö",
-                    Icons.privacy_tip_outlined,
-                  ),
-                  _buildSettingsTile("Ehdot", Icons.description_outlined),
-                  _buildSettingsTile("Personalisointi", Icons.tune),
-                ],
+                    _buildRow("Tietoa meistä", Icons.chevron_right),
+                    _buildRow("Tietosuojakäytäntö", Icons.chevron_right),
+                    _buildRow("Ehdot", Icons.chevron_right),
+                    _buildRow("Personalisointi", Icons.chevron_right),
+                  ],
+                ),
               ),
             ),
           ),
@@ -154,13 +309,58 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
     );
   }
 
-  Widget _buildSettingsTile(String title, IconData icon) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {},
+  Widget _buildRow(String text, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 7, bottom: 5),
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1),
+          ),
+        ),
+        child: ListTile(
+          dense: true,
+          visualDensity: const VisualDensity(vertical: -2),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+          title: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          trailing: Icon(icon, size: 18, color: Colors.black54),
+          onTap: () {},
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow(String text) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1)),
+      ),
+      child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(vertical: -2),
+        contentPadding: const EdgeInsets.only(top: 8, left: 7, bottom: 5),
+        title: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: Switch(
+          value: ilmoitukset,
+          activeColor: Colors.white,
+          activeTrackColor: const Color.fromARGB(255, 34, 77, 156),
+          onChanged: (v) => setState(() => ilmoitukset = v),
+        ),
+      ),
     );
   }
 }
