@@ -1,8 +1,9 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, unused_import
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
+import 'package:pnksovellus/pages/kysely.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 
 class Luotili extends StatelessWidget {
@@ -116,7 +117,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => Etusivu()),
+                      MaterialPageRoute(builder: (context) => QuizPage()),
                     );
                   },
                   child: const Text(

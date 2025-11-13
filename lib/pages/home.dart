@@ -56,7 +56,7 @@ class WelcomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // push content down so buttons/texts aren't too high
-                const SizedBox(height: 120),
+                const SizedBox(height: 150),
 
                 // logo
                 Center(
@@ -154,7 +154,7 @@ class WelcomePage extends StatelessWidget {
                       style: TextStyle(
                         color: const Color.fromARGB(255, 110, 111, 118),
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 18,
                       ),
                     ),
                   ),

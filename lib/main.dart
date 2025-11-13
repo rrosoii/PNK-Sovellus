@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
 import 'pages/home.dart';
+import 'pages/omaterveys.dart';
+import 'pages/chat.dart';
+import 'pages/profile.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('fi_FI', null);
+
   runApp(const MyApp());
 }
 
@@ -10,9 +18,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Homepage(),
+      locale: const Locale('fi', 'FI'),
+      initialRoute: '/welcome',
+      routes: {
+        '/welcome': (context) => const Homepage(), // login/signup
+        '/etusivu': (context) => const Etusivu(), // actual home screen
+        '/omaterveys': (context) => const TrackerPage(),
+        '/chat': (context) => const ChatPage(),
+        '/profile': (context) => const ProfilePage(),
+      },
     );
   }
 }

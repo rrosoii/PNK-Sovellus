@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -162,12 +164,19 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
                   bottom: 10,
                 ),
                 child: Row(
-                  children: const [
-                    Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                    SizedBox(width: 4),
-                    Icon(Icons.settings, color: Colors.white, size: 24),
-                    SizedBox(width: 8),
-                    Text(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.settings, color: Colors.white, size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
                       'Asetukset',
                       style: TextStyle(
                         color: Colors.white,
