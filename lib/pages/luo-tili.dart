@@ -1,6 +1,7 @@
-// ignore_for_file: file_names, unused_import
+// ignore_for_file: file_names, unused_import, prefer_const_declarations, prefer_const_constructors, non_constant_identifier_names
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/kysely.dart';
@@ -117,7 +118,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => QuizPage()),
+                      MaterialPageRoute(builder: (context) => const QuizPage()),
                     );
                   },
                   child: const Text(

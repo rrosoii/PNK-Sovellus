@@ -1,7 +1,8 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, prefer_const_constructors
 
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
+import 'package:pnksovellus/pages/profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'omaterveys.dart';
 
@@ -155,8 +156,9 @@ class _EtusivuState extends State<Etusivu> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
+                                                  // Use available logo asset as placeholder for article image
                                                   Image.asset(
-                                                    'assets/article.jpg',
+                                                    '',
                                                     height: 100,
                                                     width: double.infinity,
                                                     fit: BoxFit.cover,
@@ -344,6 +346,12 @@ class _EtusivuState extends State<Etusivu> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AsetuksetPage()),
+            );
+          }
+          if (value == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ProfilePage()),
             );
           }
         },

@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously, prefer_const_constructors
 
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
@@ -117,11 +117,11 @@ class _QuizPageState extends State<QuizPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Bottom-left mascot image
+            // Bottom-left mascot image (use available asset)
             Align(
               alignment: Alignment.bottomLeft,
               child: Image.asset(
-                'assets/character.png', // Replace with your image
+                'assets/character.png',
                 height: 180,
                 fit: BoxFit.contain,
               ),

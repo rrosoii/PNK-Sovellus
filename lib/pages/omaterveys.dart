@@ -1,4 +1,4 @@
-// ignore_for_file: unused_local_variable, deprecated_member_use
+// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -40,6 +40,13 @@ class _TrackerPageState extends State<TrackerPage> {
 
   late DateTime currentMonth;
 
+  // REAL WORKING ICON LIST
+  final moodIcons = [
+    'assets/icons/sadlissu.png',
+    'assets/icons/lissufaded.png',
+    'assets/icons/lissuhappy.png',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -55,8 +62,8 @@ class _TrackerPageState extends State<TrackerPage> {
       child: Stack(
         children: [
           Positioned(
-            top: -60,
-            left: -80,
+            top: -150,
+            left: -120,
             child: Container(
               width: 260,
               height: 260,
@@ -67,8 +74,8 @@ class _TrackerPageState extends State<TrackerPage> {
             ),
           ),
           Positioned(
-            top: 20,
-            left: 40,
+            top: -90,
+            left: 50,
             child: Container(
               width: 150,
               height: 150,
@@ -255,8 +262,6 @@ class _TrackerPageState extends State<TrackerPage> {
     }
   }
 
-  // ========================= MAIN PAGE BUILD =========================
-
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -290,8 +295,6 @@ class _TrackerPageState extends State<TrackerPage> {
                 ),
               ],
             ),
-
-            // Circles placed ABOVE everything so they're actually visible
             _decorBalls(),
           ],
         ),
@@ -308,30 +311,26 @@ class _TrackerPageState extends State<TrackerPage> {
         const SizedBox(height: 10),
         _buildTopButtons(),
         const SizedBox(height: 10),
-        _buildGreeting(),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              "Hei, miten tänään liikutaan?",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF233A72),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 10),
         _buildWaterAndMoods(today),
         const SizedBox(height: 15),
         _buildStepArc(),
         const SizedBox(height: 15),
       ],
-    );
-  }
-
-  Widget _buildGreeting() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          "Hei, miten tänään liikutaan?",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF233A72),
-          ),
-        ),
-      ),
     );
   }
 
@@ -376,11 +375,6 @@ class _TrackerPageState extends State<TrackerPage> {
           ),
           Row(
             children: List.generate(3, (i) {
-              final moodIcons = [
-                'assets/icons/lissusad.png',
-                'assets/icons/lissufaded.png',
-                'assets/icons/lissuhappy.png',
-              ];
               return GestureDetector(
                 onTap: () {
                   setState(() {
