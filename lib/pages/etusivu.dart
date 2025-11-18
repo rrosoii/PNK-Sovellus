@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use, prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:pnksovellus/main.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -351,7 +352,7 @@ class _EtusivuState extends State<Etusivu> {
           if (value == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ProfilePage()),
+              MaterialPageRoute(builder: (context) => const ProfilePage()),
             );
           }
         },
