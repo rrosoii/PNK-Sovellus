@@ -1,9 +1,11 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, unused_field, unused_element, use_build_context_synchronously, prefer_const_constructors
 
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pnksovellus/pages/home.dart';
 
 class AsetuksetPage extends StatefulWidget {
   const AsetuksetPage({super.key});
@@ -125,191 +127,71 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFEFF4FF),
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
 
-      body: Column(
-        children: [
-          // HEADER
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color.fromARGB(255, 34, 77, 156),
-                  Color.fromARGB(255, 13, 59, 118),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  top: 10,
-                  left: 16,
-                  right: 16,
-                  bottom: 10,
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.settings, color: Colors.white, size: 24),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Asetukset',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('username');
+    prefs.remove('avatar_path');
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const Homepage()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    bool confirm = false;
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Poista tili"),
+        content: const Text(
+          "Haluatko varmasti poistaa tilisi pysyvästi? Tätä ei voi perua.",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Peruuta"),
+            onPressed: () => Navigator.pop(context),
           ),
-
-          // THE WHITE CARD (same look, no blue void)
-          Expanded(
-            child: Transform.translate(
-              offset: const Offset(
-                0,
-                -50,
-              ), // identical overlap to your screenshot
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(innerPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // PROFILE HEADER
-                      Padding(
-                        padding: EdgeInsets.only(
-                          left: innerPadding * 0.2,
-                          top: innerPadding * 0.5,
-                          bottom: innerPadding * 0.2,
-                        ),
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: _showImagePickerDialog,
-                              child: CircleAvatar(
-                                radius: 35,
-                                backgroundColor: const Color(0xFFEFF4FF),
-                                backgroundImage: _avatarImage != null
-                                    ? FileImage(_avatarImage!)
-                                    : const AssetImage('assets/avatar.png')
-                                          as ImageProvider,
-                                child: _avatarImage == null
-                                    ? const Icon(
-                                        Icons.add_a_photo,
-                                        color: Colors.grey,
-                                        size: 25,
-                                      )
-                                    : null,
-                              ),
-                            ),
-                            SizedBox(width: innerPadding * 0.8),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Text(
-                                    _username,
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF485885),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: _editUsername,
-                                    child: const Icon(
-                                      Icons.edit,
-                                      size: 20,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      SizedBox(height: innerPadding * 1.5),
-                      const Divider(height: 1, color: Color(0xFFE5E5E5)),
-
-                      SizedBox(height: innerPadding),
-                      Padding(
-                        padding: EdgeInsets.only(left: innerPadding * 0.5),
-                        child: const Text(
-                          "Käyttäjäasetukset",
-                          style: TextStyle(
-                            color: Color(0xFFB2B2B2),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-
-                      _buildRow("Muokkaa profiilia", Icons.chevron_right),
-                      _buildRow("Vaihda salasana", Icons.chevron_right),
-                      _buildRow("Lisää maksutapa", Icons.add),
-                      _buildSwitchRow("Ilmoitukset"),
-
-                      SizedBox(height: innerPadding),
-                      Padding(
-                        padding: EdgeInsets.only(left: innerPadding * 0.5),
-                        child: const Text(
-                          "Lisää",
-                          style: TextStyle(
-                            color: Color(0xFFB2B2B2),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-
-                      _buildRow("Tietoa meistä", Icons.chevron_right),
-                      _buildRow("Tietosuojakäytäntö", Icons.chevron_right),
-                      _buildRow("Ehdot", Icons.chevron_right),
-                      _buildRow("Personalisointi", Icons.chevron_right),
-
-                      const SizedBox(height: 70),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          ElevatedButton(
+            child: const Text("Poista"),
+            onPressed: () {
+              confirm = true;
+              Navigator.pop(context);
+            },
           ),
         ],
       ),
+    );
+
+    if (!confirm) return;
+
+    try {
+      await user.delete();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sinun täytyy kirjautua sisään uudelleen.")),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('username');
+    prefs.remove('avatar_path');
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const Homepage()),
+      (route) => false,
     );
   }
 
@@ -356,6 +238,174 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
           activeTrackColor: const Color.fromARGB(255, 34, 77, 156),
           onChanged: (v) => setState(() => ilmoitukset = v),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFEFF4FF),
+      body: Column(
+        children: [
+          Container(
+            height: 150,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color.fromARGB(255, 34, 77, 156),
+                  Color.fromARGB(255, 13, 59, 118),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.settings, color: Colors.white, size: 26),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Asetukset',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: Transform.translate(
+              offset: const Offset(0, -35),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(innerPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _showImagePickerDialog,
+                            child: CircleAvatar(
+                              radius: 35,
+                              backgroundColor: const Color(0xFFEFF4FF),
+                              backgroundImage: _avatarImage != null
+                                  ? FileImage(_avatarImage!)
+                                  : const AssetImage('assets/avatar.png')
+                                        as ImageProvider,
+                            ),
+                          ),
+                          SizedBox(width: 20),
+                          Row(
+                            children: [
+                              Text(
+                                _username,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF485885),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _editUsername,
+                                child: const Icon(
+                                  Icons.edit,
+                                  size: 20,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 20),
+                      _buildRow("Muokkaa profiilia", Icons.chevron_right),
+                      _buildRow("Vaihda salasana", Icons.chevron_right),
+                      _buildRow("Lisää maksutapa", Icons.add),
+                      _buildSwitchRow("Ilmoitukset"),
+
+                      SizedBox(height: 20),
+                      _buildRow("Tietoa meistä", Icons.chevron_right),
+                      _buildRow("Tietosuojakäytäntö", Icons.chevron_right),
+                      _buildRow("Ehdot", Icons.chevron_right),
+                      _buildRow("Personalisointi", Icons.chevron_right),
+
+                      const SizedBox(height: 35),
+
+                      Center(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.logout,
+                            color: Color.fromARGB(255, 73, 108, 130),
+                          ),
+                          title: const Center(
+                            child: Text(
+                              "Kirjaudu ulos",
+                              style: TextStyle(
+                                color: Color.fromARGB(255, 73, 108, 130),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          onTap: _logout,
+                        ),
+                      ),
+
+                      Center(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.delete_forever,
+                            color: Colors.red,
+                          ),
+                          title: const Center(
+                            child: Text(
+                              "Poista tili pysyvästi",
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          onTap: _deleteAccount,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

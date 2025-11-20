@@ -1,11 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-
-    // ⭐ REQUIRED FOR FIREBASE
     id("com.google.gms.google-services")
-
-    // Flutter plugin (must be last)
     id("dev.flutter.flutter-gradle-plugin")
 }
 

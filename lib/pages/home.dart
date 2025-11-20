@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:pnksovellus/pages/log_in.dart';
-import 'package:pnksovellus/pages/luo-tili.dart';
+import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 
 class Homepage extends StatelessWidget {

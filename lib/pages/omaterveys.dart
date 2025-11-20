@@ -1,4 +1,4 @@
-// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations
+// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -39,6 +39,10 @@ class _TrackerPageState extends State<TrackerPage> {
   int _currentIndex = 1;
 
   late DateTime currentMonth;
+  int selectedDay = DateTime.now().day;
+
+  // per-day exercises for the current month: day -> list of {type, duration, distance}
+  Map<int, List<Map<String, String>>> exerciseLog = {};
 
   // REAL WORKING ICON LIST
   final moodIcons = [
@@ -52,6 +56,7 @@ class _TrackerPageState extends State<TrackerPage> {
     super.initState();
     currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _loadMoodData();
+    _loadExerciseData();
   }
 
   // ========================= DECORATIVE BALLS =========================
@@ -186,6 +191,7 @@ class _TrackerPageState extends State<TrackerPage> {
   // ========================= DATA SAVE/LOAD =========================
 
   String _monthKey(DateTime date) => "moods_${date.year}_${date.month}";
+  String _exerciseKey(DateTime date) => "exercise_${date.year}_${date.month}";
 
   Future<void> _loadMoodData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -215,11 +221,56 @@ class _TrackerPageState extends State<TrackerPage> {
     prefs.setString(_monthKey(currentMonth), enc);
   }
 
+  Future<void> _loadExerciseData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_exerciseKey(currentMonth));
+
+    if (raw == null || raw.isEmpty) {
+      setState(() => exerciseLog = {});
+      return;
+    }
+
+    final Map<int, List<Map<String, String>>> temp = {};
+
+    for (var item in raw.split("&")) {
+      final parts = item.split("|");
+      if (parts.length != 4) continue;
+      final day = int.tryParse(parts[0]);
+      if (day == null) continue;
+
+      temp.putIfAbsent(day, () => []);
+      temp[day]!.add({
+        "type": parts[1],
+        "duration": parts[2],
+        "distance": parts[3],
+      });
+    }
+
+    setState(() => exerciseLog = temp);
+  }
+
+  Future<void> _saveExerciseData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> encoded = [];
+
+    exerciseLog.forEach((day, list) {
+      for (var e in list) {
+        final type = e['type'] ?? '';
+        final duration = e['duration'] ?? '';
+        final distance = e['distance'] ?? '';
+        encoded.add("$day|$type|$duration|$distance");
+      }
+    });
+
+    await prefs.setString(_exerciseKey(currentMonth), encoded.join("&"));
+  }
+
   void _prevMonth() {
     setState(() {
       currentMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
     });
     _loadMoodData();
+    _loadExerciseData();
   }
 
   void _nextMonth() {
@@ -227,6 +278,7 @@ class _TrackerPageState extends State<TrackerPage> {
       currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
     });
     _loadMoodData();
+    _loadExerciseData();
   }
 
   void _navigate(int index) {
@@ -379,6 +431,7 @@ class _TrackerPageState extends State<TrackerPage> {
                 onTap: () {
                   setState(() {
                     selectedMood = i;
+                    selectedDay = today.day;
                     moodMap[today.day] = i;
                   });
                   _saveMoodData();
@@ -507,6 +560,11 @@ class _TrackerPageState extends State<TrackerPage> {
                   today.month == currentMonth.month &&
                   today.day == day;
 
+              final bool isSelectedDay =
+                  day == selectedDay &&
+                  currentMonth.month == today.month &&
+                  currentMonth.year == today.year;
+
               Color moodColor = Colors.transparent;
 
               if (moodMap.containsKey(day)) {
@@ -523,15 +581,26 @@ class _TrackerPageState extends State<TrackerPage> {
                 }
               }
 
+              Color bgColor = moodColor;
+              if (isToday) {
+                bgColor = const Color(0xFFCCE0FF);
+              }
+              if (isSelectedDay && !isToday) {
+                bgColor = const Color(0xFFBFD4FF);
+              }
+
               return GestureDetector(
                 onTap: () {
-                  setState(() => moodMap[day] = selectedMood);
+                  setState(() {
+                    selectedDay = day;
+                    moodMap[day] = selectedMood;
+                  });
                   _saveMoodData();
                 },
                 child: Container(
                   margin: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: isToday ? const Color(0xFFCCE0FF) : moodColor,
+                    color: bgColor,
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Center(
@@ -559,6 +628,9 @@ class _TrackerPageState extends State<TrackerPage> {
   // ========================= EXERCISES =========================
 
   Widget _buildExerciseCard() {
+    final logsForDay = exerciseLog[selectedDay] ?? [];
+    final count = logsForDay.length;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -570,23 +642,27 @@ class _TrackerPageState extends State<TrackerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "5 liikunta suoritusta",
-            style: TextStyle(
+          Text(
+            "$count liikuntasuoritusta",
+            style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
               color: Color(0xFF233A72),
             ),
           ),
           const SizedBox(height: 14),
-          _buildExerciseItem(
-            Icons.directions_run,
-            "Juoksu",
-            "35 min",
-            "7.12 km",
+
+          // dynamic list
+          ...logsForDay.map(
+            (e) => _buildExerciseItem(
+              Icons.directions_run,
+              e['type'] ?? '',
+              e['duration'] ?? '',
+              e['distance'] ?? '',
+            ),
           ),
-          _buildExerciseItem(Icons.pedal_bike, "Pyöräily", "24 min", "4.22 km"),
-          const SizedBox(height: 18),
+
+          const SizedBox(height: 8),
           Center(
             child: Column(
               children: const [
@@ -603,20 +679,43 @@ class _TrackerPageState extends State<TrackerPage> {
           ),
           const SizedBox(height: 16),
           Center(
-            child: Container(
-              height: 65,
-              width: 65,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.2),
-                    blurRadius: 12,
-                  ),
-                ],
+            child: GestureDetector(
+              onTap: () async {
+                // OPEN THE SHEET AND WAIT FOR RESULT
+                final result = await showModalBottomSheet<Map<String, String>>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => AddExerciseSheet(),
+                );
+
+                if (result != null) {
+                  setState(() {
+                    exerciseLog.putIfAbsent(selectedDay, () => []);
+                    exerciseLog[selectedDay]!.add(result);
+                  });
+                  _saveExerciseData();
+                }
+              },
+              child: Container(
+                height: 65,
+                width: 65,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.2),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add,
+                  size: 34,
+                  color: Color(0xFF2E5AAC),
+                ),
               ),
-              child: const Icon(Icons.add, size: 34, color: Color(0xFF2E5AAC)),
             ),
           ),
         ],
@@ -787,4 +886,681 @@ class StepArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// ========================= ADD EXERCISE SHEET =========================
+
+class AddExerciseSheet extends StatefulWidget {
+  const AddExerciseSheet({super.key});
+
+  @override
+  State<AddExerciseSheet> createState() => _AddExerciseSheetState();
+}
+
+class _AddExerciseSheetState extends State<AddExerciseSheet> {
+  // Text controllers
+  late TextEditingController titleController;
+  late TextEditingController distanceController;
+  late TextEditingController kcalController;
+
+  // Activity
+  String activity = "Juoksu";
+
+  final List<String> activities = [
+    "Juoksu",
+    "Pyöräily",
+    "Kävely",
+    "Kuntosali",
+    "Jooga",
+  ];
+
+  // Time
+  TimeOfDay startTime = const TimeOfDay(hour: 13, minute: 54);
+  late TimeOfDay endTime;
+  Duration duration = const Duration(hours: 1);
+
+  GestureTapCallback? get _pickTimeRange => null;
+
+  @override
+  void initState() {
+    super.initState();
+    endTime = TimeOfDay(
+      hour: (startTime.hour + 1) % 24,
+      minute: startTime.minute,
+    );
+    titleController = TextEditingController(text: "Juoksu");
+    distanceController = TextEditingController();
+    kcalController = TextEditingController();
+    _recalculateDuration();
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    distanceController.dispose();
+    kcalController.dispose();
+    super.dispose();
+  }
+
+  // ---------- FORMAT HELPERS ----------
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours.toString();
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return "$h:$m:$s";
+  }
+
+  String _formatStartTime(TimeOfDay t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return "$h.$m"; // 13.54
+  }
+
+  void _recalculateDuration() {
+    final startDT = DateTime(2024, 1, 1, startTime.hour, startTime.minute);
+    final endDT = DateTime(2024, 1, 1, endTime.hour, endTime.minute);
+    final diff = endDT.difference(startDT);
+    setState(() {
+      duration = diff.isNegative ? Duration.zero : diff;
+    });
+  }
+
+  // ---------- GENERIC TEXT POPUP (Otsikko / Matka / Kcal) ----------
+
+  Future<void> _editTextField(
+    String label,
+    TextEditingController controller,
+  ) async {
+    final temp = TextEditingController(text: controller.text);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF233A72),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: temp,
+                decoration: InputDecoration(
+                  hintText: label,
+                  filled: true,
+                  fillColor: const Color(0xFFF3F5FA),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context, rootNavigator: false).pop();
+                    },
+                    child: const Text(
+                      "Peruuta",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E5AAC),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () =>
+                        Navigator.of(context).pop(temp.text.trim()),
+                    child: const Text(
+                      "Tallenna",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() => controller.text = result);
+    }
+  }
+
+  // ---------- TIME RANGE POPUP (sets start & end, duration auto) ----------
+
+  Future<void> pickTimeRange() async {
+    TimeOfDay tempStart = startTime;
+    TimeOfDay tempEnd = endTime;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 28,
+            vertical: 70,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+            child: StatefulBuilder(
+              builder: (context, setSB) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        "Aseta aika",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          color: Color(0xFF233A72),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 30),
+
+                    _customTimeRow(
+                      label: "Alkaa",
+                      time: tempStart,
+                      onChanged: (newTime) {
+                        setSB(() => tempStart = newTime);
+                      },
+                    ),
+
+                    SizedBox(height: 28),
+
+                    _customTimeRow(
+                      label: "Päättyy",
+                      time: tempEnd,
+                      onChanged: (newTime) {
+                        setSB(() => tempEnd = newTime);
+                      },
+                    ),
+
+                    SizedBox(height: 32),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text(
+                            "Peruuta",
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              startTime = tempStart;
+                              endTime = tempEnd;
+
+                              final startDT = DateTime(
+                                2024,
+                                1,
+                                1,
+                                startTime.hour,
+                                startTime.minute,
+                              );
+
+                              final endDT = DateTime(
+                                2024,
+                                1,
+                                1,
+                                endTime.hour,
+                                endTime.minute,
+                              );
+
+                              final diff = endDT.difference(startDT);
+                              duration = diff.isNegative ? Duration.zero : diff;
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2E5AAC),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 26,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            "Tallenna",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _customTimeRow({
+    required String label,
+    required TimeOfDay time,
+    required Function(TimeOfDay) onChanged,
+  }) {
+    final hours = List<int>.generate(24, (i) => i);
+    final minutes = List<int>.generate(60, (i) => i);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: Color(0xFF233A72),
+          ),
+        ),
+        SizedBox(height: 10),
+
+        Row(
+          children: [
+            _timeDropdown(
+              value: time.hour,
+              items: hours,
+              onChanged: (v) =>
+                  onChanged(TimeOfDay(hour: v, minute: time.minute)),
+            ),
+
+            SizedBox(width: 10),
+
+            Text(
+              ":",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+
+            SizedBox(width: 10),
+
+            _timeDropdown(
+              value: time.minute,
+              items: minutes,
+              onChanged: (v) =>
+                  onChanged(TimeOfDay(hour: time.hour, minute: v)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _timeDropdown({
+    required int value,
+    required List<int> items,
+    required Function(int) onChanged,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Color(0xFFF3F5FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButton<int>(
+        value: value,
+        menuMaxHeight: 300,
+        borderRadius: BorderRadius.circular(14),
+        underline: SizedBox(),
+        isDense: true,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+        items: items
+            .map(
+              (e) => DropdownMenuItem<int>(
+                value: e,
+                child: Text(e.toString().padLeft(2, '0')),
+              ),
+            )
+            .toList(),
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
+    );
+  }
+
+  // ---------- ACTIVITY SELECT ----------
+
+  void _selectActivity() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+                color: Colors.black.withOpacity(0.12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Valitse aktiviteetti",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF233A72),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...activities.map((a) {
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      activity = a;
+                      titleController.text = a;
+                    });
+                    Navigator.pop(context);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          a,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 24,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ---------- MAIN UI (matches your screenshot) ----------
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      maxChildSize: 0.92,
+      minChildSize: 0.92,
+      builder: (_, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          child: Column(
+            children: [
+              // Top row: X and blue Tallenna button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, size: 26),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E5AAC),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    onPressed: () {
+                      final result = {
+                        "type": titleController.text.trim(),
+                        "duration": _formatDuration(duration),
+                        "distance": distanceController.text.trim(),
+                        "kcal": kcalController.text.trim(),
+                        "start": _formatStartTime(startTime),
+                      };
+                      Navigator.pop(context, result);
+                    },
+                    child: const Text(
+                      "Tallenna",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Lisää liikuntasuoritus",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF233A72),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Expanded(
+                child: ListView(
+                  controller: controller,
+                  children: [
+                    // Otsikko row
+                    _sectionHeader("Otsikko"),
+                    GestureDetector(
+                      onTap: () => _editTextField("Otsikko", titleController),
+                      child: _rightValue(titleController.text, editable: true),
+                    ),
+                    _divider(),
+
+                    // Aktiviteetti row
+                    _sectionHeader("Aktiviteetti"),
+                    GestureDetector(
+                      onTap: _selectActivity,
+                      child: _rightValue(activity),
+                    ),
+                    _divider(),
+
+                    // Aloitettu row (time string 13.54)
+                    _sectionHeader("Aloitettu"),
+                    GestureDetector(
+                      onTap: _pickTimeRange,
+                      child: _rightValue(_formatStartTime(startTime)),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Kesto row (duration HH:MM:SS)
+                    _sectionHeader("Kesto"),
+                    GestureDetector(
+                      onTap: _pickTimeRange,
+                      child: _rightValue(_formatDuration(duration)),
+                    ),
+                    _divider(),
+
+                    // Matka
+                    _sectionHeader("Matka"),
+                    GestureDetector(
+                      onTap: () =>
+                          _editTextField("Matka (km)", distanceController),
+                      child: _rightValue(
+                        distanceController.text.isEmpty
+                            ? "Lisää km"
+                            : "${distanceController.text} km",
+                        hintStyle: distanceController.text.isEmpty,
+                      ),
+                    ),
+
+                    // Kulutettu energia
+                    _sectionHeader("Kulutettu energia"),
+                    GestureDetector(
+                      onTap: () => _editTextField(
+                        "Kulutettu energia (kcal)",
+                        kcalController,
+                      ),
+                      child: _rightValue(
+                        kcalController.text.isEmpty
+                            ? "Lisää kcal"
+                            : "${kcalController.text} kcal",
+                        hintStyle: kcalController.text.isEmpty,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ---------- UI helpers ----------
+
+  Widget _sectionHeader(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 4),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black54,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _rightValue(
+    String text, {
+    bool editable = false,
+    bool hintStyle = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const SizedBox(width: 1),
+        Row(
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 15,
+                color: hintStyle ? Colors.grey : const Color(0xFF1A1A1A),
+                fontWeight: hintStyle ? FontWeight.w400 : FontWeight.w600,
+              ),
+            ),
+            if (editable) ...[
+              const SizedBox(width: 5),
+              const Icon(Icons.edit, size: 17, color: Colors.grey),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _divider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 14),
+      child: Divider(color: Color(0xFFE2E2E2)),
+    );
+  }
 }

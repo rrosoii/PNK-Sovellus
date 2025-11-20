@@ -1,6 +1,10 @@
-// ignore_for_file: file_names, unused_import, prefer_const_declarations, prefer_const_constructors, non_constant_identifier_names
+// ignore_for_file: file_names, unused_import, prefer_const_constructors, prefer_const_declarations, non_constant_identifier_names, use_build_context_synchronously
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+// Firebase
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
@@ -30,9 +34,58 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _passwordVisible = false;
   bool _confirmVisible = false;
 
+  // Controllers to get text values
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+
+  // Loading state
+  bool _loading = false;
+
+  // Create Firebase user
+  Future<void> _createAccount() async {
+    final email = _emailController.text.trim();
+    final password = _passController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    if (password != confirm) {
+      _showError("Salasanat eivät täsmää.");
+      return;
+    }
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Sähköposti ja salasana ovat pakollisia.");
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // SUCCESS → go to quiz page
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const QuizPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? "Jokin meni pieleen.");
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF3066BE);
+
     return Scaffold(
       backgroundColor: const Color(0xFFE9EFFB),
       body: SafeArea(
@@ -63,21 +116,34 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 40),
+
+              // NAME
               const Text("Koko nimi"),
               const SizedBox(height: 8),
-              TextField(decoration: _inputDecoration("Matti Meikäläinen")),
+              TextField(
+                controller: _nameController,
+                decoration: _inputDecoration("Nimi"),
+              ),
+
               const SizedBox(height: 20),
+
+              // EMAIL
               const Text("Email"),
               const SizedBox(height: 8),
               TextField(
-                decoration: _inputDecoration("matti.meikalainen@gmail.com"),
+                controller: _emailController,
+                decoration: _inputDecoration("Sähköposti"),
               ),
+
               const SizedBox(height: 20),
+
+              // PASSWORD
               const Text("Salasana"),
               const SizedBox(height: 8),
               TextField(
+                controller: _passController,
                 obscureText: !_passwordVisible,
-                decoration: _inputDecoration("Salasana123!").copyWith(
+                decoration: _inputDecoration("Salasana").copyWith(
                   suffixIcon: IconButton(
                     icon: Icon(
                       _passwordVisible
@@ -89,12 +155,16 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
+              // CONFIRM PASSWORD
               const Text("Salasanan varmistus"),
               const SizedBox(height: 8),
               TextField(
+                controller: _confirmController,
                 obscureText: !_confirmVisible,
-                decoration: _inputDecoration("************").copyWith(
+                decoration: _inputDecoration("Salasanan vahvistus").copyWith(
                   suffixIcon: IconButton(
                     icon: Icon(
                       _confirmVisible ? Icons.visibility_off : Icons.visibility,
@@ -104,7 +174,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 40),
+
+              // SIGN UP BUTTON
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -115,19 +188,19 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const QuizPage()),
-                    );
-                  },
-                  child: const Text(
-                    "Luo tili",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                  onPressed: _loading ? null : _createAccount,
+                  child: _loading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Luo tili",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // GO TO LOGIN
               Center(
                 child: RichText(
                   text: TextSpan(
@@ -166,10 +239,7 @@ class _SignUpPageState extends State<SignUpPage> {
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 14.0,
-        horizontal: 16.0,
-      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

@@ -1,12 +1,12 @@
-// ignore_for_file: prefer_const_declarations, prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, prefer_const_declarations, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
-import 'package:pnksovellus/pages/luo-tili.dart';
-
-void main() => runApp(const Login());
+import 'package:pnksovellus/pages/luo_tili.dart';
 
 class Login extends StatelessWidget {
   const Login({super.key});
@@ -29,11 +29,43 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _passwordVisible = false;
-  final bool _emailVisible = true;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _signIn() async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Navigate to home after login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Etusivu()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Tapahtui virhe.";
+
+      if (e.code == 'user-not-found') {
+        message = "Sähköpostilla ei löytynyt tiliä.";
+      } else if (e.code == 'wrong-password') {
+        message = "Väärä salasana.";
+      } else if (e.code == 'invalid-email') {
+        message = "Sähköpostin muoto ei kelpaa.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF3066BE);
+
     return Scaffold(
       backgroundColor: const Color(0xFFE9EFFB),
       body: SafeArea(
@@ -67,15 +99,14 @@ class _LoginPageState extends State<LoginPage> {
               const Text("Email"),
               const SizedBox(height: 8),
               TextField(
-                obscureText: !_emailVisible,
-                decoration: _inputDecoration(
-                  "matti.meikalainen@gmail.com",
-                ).copyWith(),
+                controller: _emailController,
+                decoration: _inputDecoration("matti.meikalainen@gmail.com"),
               ),
               const SizedBox(height: 20),
               const Text("Salasana"),
               const SizedBox(height: 8),
               TextField(
+                controller: _passwordController,
                 obscureText: !_passwordVisible,
                 decoration: _inputDecoration("Salasana123!").copyWith(
                   suffixIcon: IconButton(
@@ -100,12 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => Etusivu()),
-                    );
-                  },
+                  onPressed: _signIn,
                   child: const Text(
                     "Kirjaudu sisään",
                     style: TextStyle(fontSize: 16, color: Colors.white),
