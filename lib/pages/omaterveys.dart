@@ -1,12 +1,13 @@
-// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously
+// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:health/health.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/chat.dart';
 import 'package:pnksovellus/pages/profile.dart';
@@ -34,6 +35,9 @@ class Omaterveys extends StatelessWidget {
     );
   }
 }
+
+bool showExercises = false;
+final ScrollController _exerciseCardScroll = ScrollController();
 
 class _CalendarHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -70,7 +74,15 @@ final ScrollController _exerciseScroll = ScrollController();
 
 class _TrackerPageState extends State<TrackerPage> {
   int waterGlasses = 5;
-  int steps = 3460;
+
+  Timer? _healthTimer;
+
+  // Health / step tracking
+  final HealthFactory _health = HealthFactory();
+  int todaySteps = 0;
+  double todayDistanceKm = 0;
+  double todayCalories = 0;
+  bool _loadingHealth = false;
 
   int selectedMood = 2;
   Map<int, int> moodMap = {};
@@ -94,12 +106,73 @@ class _TrackerPageState extends State<TrackerPage> {
   ];
 
   @override
+  void dispose() {
+    _healthTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _loadMoodData();
     _loadExerciseData();
     _loadCustomActivities();
+
+    _fetchTodayHealthData();
+    // refresh steps every 20 seconds
+    _healthTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (timer) => _fetchTodayHealthData(),
+    );
+  }
+
+  double _distanceFromSteps(int steps) {
+    // rough average: 0.78 m per step
+    return (steps * 0.78) / 1000.0; // km
+  }
+
+  double _caloriesFromSteps(int steps) {
+    // very rough: ~0.04 kcal per step
+    return steps * 0.04;
+  }
+
+  Future<void> _fetchTodayHealthData() async {
+    setState(() => _loadingHealth = true);
+
+    try {
+      final types = <HealthDataType>[
+        HealthDataType.STEPS,
+      ];
+
+      final now = DateTime.now();
+      final midnight = DateTime(now.year, now.month, now.day);
+
+      // Ask for permission
+      final allowed = await _health.requestAuthorization(types);
+
+      if (!allowed) {
+        setState(() => _loadingHealth = false);
+        return;
+      }
+
+      // Get steps for today
+      final steps = await _health.getTotalStepsInInterval(midnight, now);
+
+      final s = steps ?? 0;
+      final dist = _distanceFromSteps(s);
+      final kcal = _caloriesFromSteps(s);
+
+      setState(() {
+        todaySteps = s;
+        todayDistanceKm = dist;
+        todayCalories = kcal;
+        _loadingHealth = false;
+      });
+    } catch (e) {
+      // if it explodes, just fail silently and keep app alive
+      setState(() => _loadingHealth = false);
+    }
   }
 
   Future<void> _loadCustomActivities() async {
@@ -383,45 +456,153 @@ class _TrackerPageState extends State<TrackerPage> {
                 Expanded(
                   child: Stack(
                     children: [
-                      // --- Calendar stays visible at top as a background layer ---
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: _buildCalendarCard(),
+                      // ===================== CALENDAR =====================
+                      Positioned.fill(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 10),
+                              _buildCalendarCard(),
+                              const SizedBox(height: 20),
+
+                              // ------- TOGGLE BUTTON -------
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    showExercises = true;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        blurRadius: 12,
+                                        color: Colors.black.withOpacity(0.08),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Text(
+                                        "Näytä liikuntasuoritukset",
+                                        style: TextStyle(
+                                          color: Color(0xFF233A72),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.keyboard_arrow_up,
+                                          color: Color(0xFF233A72)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 120),
+                            ],
+                          ),
+                        ),
                       ),
 
-                      // --- Exercises scroll ON TOP of the calendar ---
-                      // --- controller for clamping behaviour ---
-                      Positioned.fill(
-                        child: NotificationListener<ScrollNotification>(
-                          onNotification: (scroll) {
-                            // clamp at top: stop scrolling once exercises touch the calendar
-                            if (_exerciseScroll.offset <= 0 &&
-                                scroll is OverscrollNotification) {
-                              return true;
-                            }
-                            return false;
-                          },
-                          child: SingleChildScrollView(
-                            controller: _exerciseScroll,
-                            physics: const ClampingScrollPhysics(),
-                            child: Column(
-                              children: [
-                                // this spacer defines where the exercise card begins
-                                const SizedBox(height: 330),
+                      // ===================== EXERCISE CARD POPUP =====================
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOutCubic,
 
-                                _buildExerciseCard(),
+                        // if visible → slide up over calendar
+                        // if hidden → slide fully offscreen bottom
+                        bottom: showExercises ? 0 : -500,
+                        left: 0,
+                        right: 0,
 
-                                const SizedBox(height: 100),
-                              ],
-                            ),
+                        child: Container(
+                          padding: const EdgeInsets.only(top: 12),
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                          ),
+                          child: Column(
+                            children: [
+                              // ---- DRAG HANDLE / HIDE BUTTON ----
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    showExercises = false;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        blurRadius: 12,
+                                        color: Colors.black.withOpacity(0.08),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Text(
+                                        "Piilota",
+                                        style: TextStyle(
+                                          color: Color(0xFF233A72),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.keyboard_arrow_down,
+                                          color: Color(0xFF233A72)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // ---- EXERCISE CARD ITSELF ----
+                              Container(
+                                height: 350,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(22),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      blurRadius: 12,
+                                      color: Colors.black.withOpacity(0.08),
+                                    ),
+                                  ],
+                                ),
+                                child: ListView(
+                                  controller: _exerciseCardScroll,
+                                  padding: EdgeInsets.zero,
+                                  children: [
+                                    _buildExerciseCard(),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
+                )
               ],
             ),
             _decorBalls(),
@@ -441,14 +622,14 @@ class _TrackerPageState extends State<TrackerPage> {
         _buildTopButtons(),
         const SizedBox(height: 10),
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
               "Hei, miten tänään liikutaan?",
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
                 color: Color(0xFF233A72),
               ),
             ),
@@ -471,56 +652,109 @@ class _TrackerPageState extends State<TrackerPage> {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: () {
+              // minus button
+              GestureDetector(
+                onTap: () {
                   setState(() {
                     if (waterGlasses > 0) waterGlasses--;
                   });
                 },
-                icon: const Icon(Icons.remove_circle_outline),
+                child: Icon(
+                  Icons.remove_circle_outline,
+                  size: 30,
+                  color: const Color(0xFF233A72),
+                ),
               ),
+
+              const SizedBox(width: 14),
+
+              // water glass with glow
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.8),
+                      blurRadius: 18,
+                      spreadRadius: 4,
+                    ),
+                  ],
                 ),
-                child: Text(
-                  "$waterGlasses",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(
+                      "assets/icons/waterglass.png",
+                      width: 55,
+                      height: 70,
+                    ),
+                    Text(
+                      "$waterGlasses",
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF233A72),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              IconButton(
-                onPressed: () => setState(() => waterGlasses++),
-                icon: const Icon(Icons.add_circle_outline),
+
+              const SizedBox(width: 14),
+
+              // plus button
+              GestureDetector(
+                onTap: () {
+                  setState(() => waterGlasses++);
+                },
+                child: Icon(
+                  Icons.add_circle_outline,
+                  size: 30,
+                  color: const Color(0xFF233A72),
+                ),
               ),
             ],
           ),
+
+          // moods
           Row(
             children: List.generate(3, (i) {
+              final bool isSelected = selectedMood == i;
+
               return GestureDetector(
                 onTap: () {
                   setState(() {
                     selectedMood = i;
-                    selectedDay = today.day;
-                    moodMap[today.day] = i;
+                    moodMap[selectedDay] = i;
                   });
                   _saveMoodData();
                 },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: selectedMood == i
-                        ? Colors.white
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.5)
                         : Colors.transparent,
-                    child: Image.asset(moodIcons[i], width: 32, height: 32),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color.fromARGB(255, 255, 255, 255)
+                                  .withOpacity(0.55),
+                              blurRadius: 30,
+                              spreadRadius: 6,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Image.asset(
+                    moodIcons[i],
+                    width: 55,
+                    height: 55,
+                    fit: BoxFit.contain,
                   ),
                 ),
               );
@@ -532,30 +766,89 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Widget _buildStepArc() {
-    return CustomPaint(
-      painter: StepArcPainter(steps: steps),
-      child: SizedBox(
-        height: 160,
-        width: 200,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              "$steps",
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF233A72),
-              ),
+    // fallback: if health didn't work, stay with some default
+    final int displaySteps =
+        todaySteps; // or todaySteps == 0 ? steps : todaySteps;
+
+    return Column(
+      children: [
+        CustomPaint(
+          painter: StepArcPainter(steps: displaySteps),
+          child: SizedBox(
+            height: 180,
+            width: 200,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (_loadingHealth)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4.0),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                Text(
+                  "$displaySteps",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF233A72),
+                  ),
+                ),
+                const Text(
+                  "/ 10000",
+                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                ),
+                const SizedBox(height: 10),
+              ],
             ),
-            const Text(
-              "/ 10000",
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
-      ),
+
+        // small summary row below the arc
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  const Text(
+                    "Matka",
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  Text(
+                    "${todayDistanceKm.toStringAsFixed(2)} km",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF233A72),
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  const Text(
+                    "Energia",
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  Text(
+                    "${todayCalories.toStringAsFixed(0)} kcal",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF233A72),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -584,14 +877,15 @@ class _TrackerPageState extends State<TrackerPage> {
             children: [
               GestureDetector(
                 onTap: _prevMonth,
-                child: const Icon(Icons.arrow_back_ios, size: 16),
+                child: const Icon(Icons.chevron_left,
+                    size: 26, color: Color(0xFF6F85C2)),
               ),
               Expanded(
                 child: Center(
                   child: Text(
                     DateFormat("LLLL yyyy", "fi_FI").format(currentMonth),
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF233A72),
                     ),
@@ -600,7 +894,8 @@ class _TrackerPageState extends State<TrackerPage> {
               ),
               GestureDetector(
                 onTap: _nextMonth,
-                child: const Icon(Icons.arrow_forward_ios, size: 16),
+                child: const Icon(Icons.chevron_right,
+                    size: 26, color: Color(0xFF6F85C2)),
               ),
             ],
           ),
@@ -632,20 +927,19 @@ class _TrackerPageState extends State<TrackerPage> {
               if (index < startWeekday - 1) return Container();
 
               final day = index - (startWeekday - 2);
-              bool isToday =
-                  today.year == currentMonth.year &&
+
+              final isToday = today.year == currentMonth.year &&
                   today.month == currentMonth.month &&
                   today.day == day;
 
-              final bool isSelectedDay =
-                  day == selectedDay &&
-                  currentMonth.month == today.month &&
-                  currentMonth.year == today.year;
+              final isSelected = day == selectedDay;
 
+              // load mood for this day
+              final int? mood = moodMap[day];
               Color moodColor = Colors.transparent;
 
-              if (moodMap.containsKey(day)) {
-                switch (moodMap[day]) {
+              if (mood != null) {
+                switch (mood) {
                   case 0:
                     moodColor = Colors.blue.withOpacity(0.3);
                     break;
@@ -658,18 +952,33 @@ class _TrackerPageState extends State<TrackerPage> {
                 }
               }
 
+              // load exercise icons
+              final hasExercises =
+                  exerciseLog[day] != null && exerciseLog[day]!.isNotEmpty;
+
+              final List<IconData> dayIcons = hasExercises
+                  ? exerciseLog[day]!
+                      .map((e) => activityIcons[e['type']] ?? defaultCustomIcon)
+                      .toList()
+                  : [];
+
+              // background layer (mood > today > selected)
               Color bgColor = moodColor;
-              if (isToday) {
-                bgColor = const Color(0xFFCCE0FF);
-              }
-              if (isSelectedDay && !isToday) {
-                bgColor = const Color(0xFFBFD4FF);
-              }
+              if (isToday) bgColor = const Color(0xFFCCE0FF);
 
               return GestureDetector(
                 onTap: () {
                   setState(() {
                     selectedDay = day;
+                    // if this day already has a mood, update the header mood selection
+                    if (moodMap.containsKey(day)) {
+                      selectedMood = moodMap[day]!;
+                    }
+                  });
+                },
+                onLongPress: () {
+                  // long press sets mood for that day
+                  setState(() {
                     moodMap[day] = selectedMood;
                   });
                   _saveMoodData();
@@ -677,27 +986,100 @@ class _TrackerPageState extends State<TrackerPage> {
                 child: Container(
                   margin: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: bgColor,
+                    color:
+                        isToday ? const Color(0xFFCCE0FF) : Colors.transparent,
                     borderRadius: BorderRadius.circular(50),
+                    border: isSelected
+                        ? Border.all(color: const Color(0xFF5A8FF7), width: 2)
+                        : null,
                   ),
-                  child: Center(
-                    child: Text(
-                      "$day",
-                      style: TextStyle(
-                        fontWeight: isToday
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isToday
-                            ? const Color(0xFF0B3D91)
-                            : Colors.black87,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // day number
+                      Text(
+                        "$day",
+                        style: TextStyle(
+                          fontWeight:
+                              isToday ? FontWeight.bold : FontWeight.normal,
+                          color: isToday
+                              ? const Color(0xFF0B3D91)
+                              : Colors.black87,
+                        ),
                       ),
-                    ),
+
+                      // =============== ICONS FOR ACTIVITIES ===============
+                      if (dayIcons.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 1,
+                            children: dayIcons.take(3).map((ico) {
+                              return Icon(
+                                ico,
+                                size: 10,
+                                color: const Color(0xFF2E5AAC),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+
+                      if (dayIcons.length > 3)
+                        const Icon(Icons.more_horiz,
+                            size: 10, color: Color(0xFF2E5AAC)),
+                    ],
                   ),
                 ),
               );
             },
-          ),
+          )
         ],
+      ),
+    );
+  }
+
+  Widget _addExerciseButton({
+    EdgeInsetsGeometry padding = const EdgeInsets.only(top: 100),
+  }) {
+    return Center(
+      child: GestureDetector(
+        onTap: () async {
+          // OPEN THE SHEET AND WAIT FOR RESULT
+          final result = await showModalBottomSheet<Map<String, String>>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => AddExerciseSheet(),
+          );
+
+          if (result != null) {
+            setState(() {
+              exerciseLog.putIfAbsent(selectedDay, () => []);
+              exerciseLog[selectedDay]!.add(result);
+            });
+            _saveExerciseData();
+          }
+        },
+        child: Container(
+          height: 65,
+          width: 65,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(40),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.2),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.add,
+            size: 34,
+            color: Color(0xFF2E5AAC),
+          ),
+        ),
       ),
     );
   }
@@ -727,7 +1109,6 @@ class _TrackerPageState extends State<TrackerPage> {
               color: Color(0xFF233A72),
             ),
           ),
-          const SizedBox(height: 14),
 
           // dynamic list
           ...logsForDay.asMap().entries.map((entry) {
@@ -742,26 +1123,57 @@ class _TrackerPageState extends State<TrackerPage> {
             );
           }).toList(),
 
-          const SizedBox(height: 8),
-          Center(
-            child: Column(
-              children: const [
-                Text(
-                  "näe kaikki",
-                  style: TextStyle(
-                    color: Color(0xFF2E5AAC),
-                    fontWeight: FontWeight.bold,
+          // Auto-create exercise from today's steps
+          if (todaySteps > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    final now = DateTime.now();
+
+                    final autoEntry = <String, String>{
+                      "type": "Kävely",
+                      "duration": "0:30:00",
+                      "distance": todayDistanceKm.toStringAsFixed(2),
+                      "kcal": todayCalories.toStringAsFixed(0),
+                      "start": "${now.hour.toString().padLeft(2, '0')}"
+                          "."
+                          "${now.minute.toString().padLeft(2, '0')}",
+                    };
+
+                    setState(() {
+                      exerciseLog.putIfAbsent(selectedDay, () => []);
+                      exerciseLog[selectedDay]!.add(autoEntry);
+                    });
+                    _saveExerciseData();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Päivän askelista luotu suoritus"),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.directions_walk,
+                      color: Color(0xFF2E5AAC)),
+                  label: const Text(
+                    "Luo suoritus päivän askelista",
+                    style: TextStyle(
+                      color: Color(0xFF2E5AAC),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                Icon(Icons.keyboard_arrow_down, color: Color(0xFF2E5AAC)),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 10),
+
+          // ---------------------- ADDED + BUTTON ----------------------
           Center(
             child: GestureDetector(
               onTap: () async {
-                // OPEN THE SHEET AND WAIT FOR RESULT
                 final result = await showModalBottomSheet<Map<String, String>>(
                   context: context,
                   isScrollControlled: true,
@@ -778,26 +1190,28 @@ class _TrackerPageState extends State<TrackerPage> {
                 }
               },
               child: Container(
-                height: 65,
-                width: 65,
+                height: 60,
+                width: 60,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(40),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.blue.withOpacity(0.25),
                       blurRadius: 12,
                     ),
                   ],
                 ),
                 child: const Icon(
                   Icons.add,
-                  size: 34,
+                  size: 32,
                   color: Color(0xFF2E5AAC),
                 ),
               ),
             ),
           ),
+
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -1194,9 +1608,9 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
   List<String> customActivities = [];
 
   List<String> get allActivities => [
-    ..._defaultActivities,
-    ...customActivities,
-  ];
+        ..._defaultActivities,
+        ...customActivities,
+      ];
 
   // Icons for known activities
   final Map<String, IconData> activityIcons = {

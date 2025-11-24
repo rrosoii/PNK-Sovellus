@@ -7,6 +7,7 @@ import 'package:pnksovellus/pages/profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pnksovellus/pages/article_page.dart';
 import 'omaterveys.dart';
+import 'package:pnksovellus/pages/challenge_page.dart';
 
 class ArticlesListPage extends StatelessWidget {
   const ArticlesListPage({super.key});
@@ -51,7 +52,6 @@ class _EtusivuState extends State<Etusivu> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFF4FF),
-
       body: loadingProfile
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -77,10 +77,8 @@ class _EtusivuState extends State<Etusivu> {
                               ),
                             ),
                           ),
-
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -191,8 +189,8 @@ class _EtusivuState extends State<Etusivu> {
                                                   const Padding(
                                                     padding:
                                                         EdgeInsets.symmetric(
-                                                          horizontal: 8.0,
-                                                        ),
+                                                      horizontal: 8.0,
+                                                    ),
                                                     child: Text(
                                                       '20.10.2025',
                                                       style: TextStyle(
@@ -217,13 +215,13 @@ class _EtusivuState extends State<Etusivu> {
                                   child: ShaderMask(
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
-                                          colors: [
-                                            Color(0xFF485885),
-                                            Color(0xFF2196F3),
-                                          ],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ).createShader(bounds),
+                                      colors: [
+                                        Color(0xFF485885),
+                                        Color(0xFF2196F3),
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ).createShader(bounds),
                                     child: const Text(
                                       'Saavutukset',
                                       style: TextStyle(
@@ -285,13 +283,13 @@ class _EtusivuState extends State<Etusivu> {
                                   child: ShaderMask(
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
-                                          colors: [
-                                            Color(0xFF485885),
-                                            Color(0xFF2196F3),
-                                          ],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ).createShader(bounds),
+                                      colors: [
+                                        Color(0xFF485885),
+                                        Color(0xFF2196F3),
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ).createShader(bounds),
                                     child: const Text(
                                       "Artikkelit",
                                       style: TextStyle(
@@ -377,7 +375,6 @@ class _EtusivuState extends State<Etusivu> {
                 },
               ),
             ),
-
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
         decoration: BoxDecoration(
@@ -494,24 +491,85 @@ class _EtusivuState extends State<Etusivu> {
   }
 
   Widget _buildChallengeCard(String title, String desc) {
-    return Container(
-      height: 100,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(desc),
+    return GestureDetector(
+      onTap: () {
+        String normalized = title.toLowerCase();
+
+        if (normalized.contains("kävely")) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChallengePage(
+                challengeId: "steps_10000_week",
+                title: "Kävelyhaaste",
+                description: "Kävele 10 000 askelta joka päivä viikon ajan.",
+                type: "steps",
+                durationDays: 7,
+                requiredSteps: 10000,
+              ),
+            ),
+          );
+        } else if (normalized.contains("liiku jokapäiv")) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChallengePage(
+                challengeId: "exercise_daily_14",
+                title: "Liiku jokapäivä",
+                description: "Tee liikuntasuoritus joka päivä 2 viikon ajan.",
+                type: "exercise",
+                durationDays: 14,
+              ),
+            ),
+          );
+        } else if (normalized.contains("liiku aktiivis")) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChallengePage(
+                challengeId: "exercise_weekly_5",
+                title: "Liiku aktiivisesti",
+                description: "Tee viisi (5) liikuntasuoritusta viikossa.",
+                type: "exerciseWeekly",
+                durationDays: 7,
+              ),
+            ),
+          );
+        } else if (normalized.contains("100 000")) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChallengePage(
+                challengeId: "steps_100k_month",
+                title: "100 000 askelta",
+                description: "Kerää 100 000 askelta kuukauden aikana.",
+                type: "stepsAccumulated",
+                durationDays: 30,
+                requiredSteps: 100000,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(desc),
+            ],
+          ),
         ),
       ),
     );
@@ -522,15 +580,15 @@ class _EtusivuState extends State<Etusivu> {
       return [
         Expanded(
           child: _buildChallengeCard(
-            'Lempeä venyttely',
-            '5–10 min palauttavaa liikettä päivittäin',
+            'Kävelyhaaste',
+            'Kävele 5 000 askelta päivässä viikon ajan',
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildChallengeCard(
-            'Rentoutushaaste',
-            'Kokeile 3 rentoutusharjoitusta tällä viikolla',
+            'Juomahaaste',
+            'Juo 8 lasillista vettä päivittäin',
           ),
         ),
       ];
@@ -541,14 +599,14 @@ class _EtusivuState extends State<Etusivu> {
         Expanded(
           child: _buildChallengeCard(
             'Kävelyhaaste',
-            'Kävele 8 000 askelta päivässä viikon ajan',
+            'Kävele 10 000 askelta päivässä viikon ajan',
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildChallengeCard(
-            'Vesitankkaus',
-            'Juo 1,5 litraa vettä päivittäin',
+            'Liiku aktiivisesti',
+            'Tee viisi (5) liikuntasuoritusta viikossa',
           ),
         ),
       ];
@@ -558,15 +616,15 @@ class _EtusivuState extends State<Etusivu> {
       return [
         Expanded(
           child: _buildChallengeCard(
-            'HIIT-haaste',
-            '3 intensiivistä treeniä tällä viikolla',
+            'Liiku jokapäivä',
+            'Tee liikuntasuoritus joka päivä 2 viikon ajan',
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildChallengeCard(
-            'Voimaharjoitus',
-            '30 min voimatreeni 4 kertaa viikossa',
+            '100 000 askelta',
+            'Kerää 100 000 askelta kuukauden aikana',
           ),
         ),
       ];
@@ -597,7 +655,10 @@ class _EtusivuState extends State<Etusivu> {
         setState(() => _selectedIndex = index);
 
         if (index == 0) {
-          Navigator.pushReplacementNamed(context, '/etusivu');
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const Etusivu()),
+          );
         }
 
         if (index == 1) {
