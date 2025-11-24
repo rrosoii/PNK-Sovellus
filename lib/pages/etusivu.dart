@@ -5,7 +5,20 @@ import 'package:pnksovellus/main.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pnksovellus/pages/article_page.dart';
 import 'omaterveys.dart';
+
+class ArticlesListPage extends StatelessWidget {
+  const ArticlesListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Kaikki artikkelit')),
+      body: const Center(child: Text('Articles list')),
+    );
+  }
+}
 
 class Etusivu extends StatefulWidget {
   const Etusivu({super.key});
@@ -45,12 +58,10 @@ class _EtusivuState extends State<Etusivu> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    physics:
-                        const ClampingScrollPhysics(), // prevents extra overscroll
+                    physics: const ClampingScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        minHeight:
-                            constraints.maxHeight, // makes content fill screen
+                        minHeight: constraints.maxHeight,
                       ),
                       child: Stack(
                         children: [
@@ -66,13 +77,10 @@ class _EtusivuState extends State<Etusivu> {
                               ),
                             ),
                           ),
+
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              16,
-                              16,
-                              16,
-                              90,
-                            ), // <-- bottom padding added
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -94,6 +102,7 @@ class _EtusivuState extends State<Etusivu> {
                                     ],
                                   ),
                                 ),
+
                                 const SizedBox(height: 20),
 
                                 // Search bar
@@ -112,6 +121,7 @@ class _EtusivuState extends State<Etusivu> {
                                     ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 20),
 
                                 // Welcome text
@@ -157,7 +167,6 @@ class _EtusivuState extends State<Etusivu> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  // Use available logo asset as placeholder for article image
                                                   Image.asset(
                                                     '',
                                                     height: 100,
@@ -200,6 +209,7 @@ class _EtusivuState extends State<Etusivu> {
                                     },
                                   ),
                                 ),
+
                                 const SizedBox(height: 50),
 
                                 // Achievements
@@ -225,6 +235,7 @@ class _EtusivuState extends State<Etusivu> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
@@ -246,9 +257,10 @@ class _EtusivuState extends State<Etusivu> {
                                     ),
                                   ],
                                 ),
+
                                 const SizedBox(height: 30),
 
-                                // Challenges
+                                // Challenges title
                                 const Text(
                                   'Sinulle suositellut haasteet',
                                   style: TextStyle(
@@ -264,27 +276,83 @@ class _EtusivuState extends State<Etusivu> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 30),
+                                const SizedBox(height: 40),
 
-                                // Categories
-                                const Text(
-                                  'Artikkelit',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                // ---------------------------
+                                // ARTIKKELIT (fixed section)
+                                // ---------------------------
+                                Center(
+                                  child: ShaderMask(
+                                    shaderCallback: (bounds) =>
+                                        const LinearGradient(
+                                          colors: [
+                                            Color(0xFF485885),
+                                            Color(0xFF2196F3),
+                                          ],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ).createShader(bounds),
+                                    child: const Text(
+                                      "Artikkelit",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
                                 ),
+
+                                const SizedBox(height: 6),
+
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const ArticleListPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      "Kaikki artikkelit",
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 10),
+
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Text(
+                                    "Aiheet",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF485885),
+                                    ),
+                                  ),
+                                ),
+
                                 const SizedBox(height: 12),
+
                                 Row(
                                   mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
+                                      MainAxisAlignment.spaceEvenly,
                                   children: const [
                                     CategoryChip(
                                       icon: Icons.bedtime,
                                       label: 'Uni',
                                     ),
                                     CategoryChip(
-                                      icon: Icons.apple,
+                                      icon: Icons.restaurant_menu,
                                       label: 'Ravinto',
                                     ),
                                     CategoryChip(
@@ -292,11 +360,12 @@ class _EtusivuState extends State<Etusivu> {
                                       label: 'Sydän',
                                     ),
                                     CategoryChip(
-                                      icon: Icons.flash_on,
+                                      icon: Icons.bolt,
                                       label: 'Energia',
                                     ),
                                   ],
                                 ),
+
                                 const SizedBox(height: 50),
                               ],
                             ),
@@ -309,7 +378,6 @@ class _EtusivuState extends State<Etusivu> {
               ),
             ),
 
-      // Bottom navigation
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
         decoration: BoxDecoration(
@@ -334,6 +402,8 @@ class _EtusivuState extends State<Etusivu> {
       ),
     );
   }
+
+  // ---------------- HELPERS ----------------
 
   Widget _buildIconButton(IconData icon, String tooltip) {
     if (icon == Icons.settings) {
@@ -502,7 +572,6 @@ class _EtusivuState extends State<Etusivu> {
       ];
     }
 
-    // fallback if profile missing
     return [
       Expanded(
         child: _buildChallengeCard(
@@ -532,14 +601,11 @@ class _EtusivuState extends State<Etusivu> {
         }
 
         if (index == 1) {
-          // Tilastot → Omaterveys tracker page
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const TrackerPage()),
           );
         }
-        // index 2 = chatti (do nothing for now)
-        // index 3 = user profile (you can add later)
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -575,6 +641,7 @@ class _EtusivuState extends State<Etusivu> {
 class CategoryChip extends StatelessWidget {
   final IconData icon;
   final String label;
+
   const CategoryChip({super.key, required this.icon, required this.label});
 
   @override
@@ -584,10 +651,17 @@ class CategoryChip extends StatelessWidget {
         CircleAvatar(
           radius: 25,
           backgroundColor: Colors.white,
-          child: Icon(icon, color: Colors.blue),
+          child: Icon(icon, color: Colors.blue, size: 26),
         ),
         const SizedBox(height: 6),
-        Text(label),
+        Text(
+          label,
+          style: TextStyle(
+            color: Color(0xFF485885),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
