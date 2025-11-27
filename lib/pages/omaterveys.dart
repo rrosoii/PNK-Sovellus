@@ -1005,9 +1005,7 @@ class _TrackerPageState extends State<TrackerPage> {
     );
   }
 
-  Widget _addExerciseButton({
-    EdgeInsetsGeometry padding = const EdgeInsets.only(top: 100),
-  }) {
+  Widget _addExerciseButton() {
     return Center(
       child: GestureDetector(
         onTap: () async {
