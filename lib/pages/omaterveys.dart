@@ -641,7 +641,7 @@ class _TrackerPageState extends State<TrackerPage> {
                 ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: 3),
 
               // water glass with glow
               Container(
@@ -662,22 +662,26 @@ class _TrackerPageState extends State<TrackerPage> {
                   children: [
                     Image.asset(
                       "assets/icons/waterglass.png",
-                      width: 55,
-                      height: 70,
+                      width: 65,
+                      height: 80,
                     ),
-                    Text(
-                      "$waterGlasses",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF233A72),
+                    Transform.translate(
+                      offset: const Offset(
+                          0, 16), // move down; adjust value to taste
+                      child: Text(
+                        "$waterGlasses",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(255, 255, 255, 255),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: 3),
 
               // plus button
               GestureDetector(
@@ -693,28 +697,36 @@ class _TrackerPageState extends State<TrackerPage> {
             ],
           ),
 
-          // moods
+          // moods + clear
+          // moods (tap same mood again to clear)
           Row(
             children: List.generate(3, (i) {
-              final bool isSelected = selectedMood == i;
+              final bool isSelectedForDay = moodMap[selectedDay] == i;
 
               return GestureDetector(
                 onTap: () {
                   setState(() {
-                    selectedMood = i;
-                    moodMap[selectedDay] = i;
+                    if (moodMap[selectedDay] == i) {
+                      // tap same mood again -> clear it
+                      moodMap.remove(selectedDay);
+                      selectedMood = -1;
+                    } else {
+                      // set mood
+                      moodMap[selectedDay] = i;
+                      selectedMood = i;
+                    }
                   });
                   _saveMoodData();
                 },
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 5),
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected
+                    color: isSelectedForDay
                         ? Colors.white.withOpacity(0.5)
                         : Colors.transparent,
-                    boxShadow: isSelected
+                    boxShadow: isSelectedForDay
                         ? [
                             BoxShadow(
                               color: const Color.fromARGB(255, 255, 255, 255)
@@ -727,8 +739,8 @@ class _TrackerPageState extends State<TrackerPage> {
                   ),
                   child: Image.asset(
                     moodIcons[i],
-                    width: 55,
-                    height: 55,
+                    width: 65,
+                    height: 65,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -936,14 +948,15 @@ class _TrackerPageState extends State<TrackerPage> {
                 onTap: () {
                   setState(() {
                     selectedDay = day;
-                    // if this day already has a mood, update the header mood selection
                     if (moodMap.containsKey(day)) {
                       selectedMood = moodMap[day]!;
+                    } else {
+                      selectedMood = -1; // no mood for this day
                     }
                   });
                 },
                 onLongPress: () {
-                  // long press sets mood for that day
+                  if (selectedMood < 0) return; // nothing to apply
                   setState(() {
                     moodMap[day] = selectedMood;
                   });
@@ -952,8 +965,7 @@ class _TrackerPageState extends State<TrackerPage> {
                 child: Container(
                   margin: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color:
-                        isToday ? const Color(0xFFCCE0FF) : Colors.transparent,
+                    color: bgColor, // apply mood/today tint (set above)
                     borderRadius: BorderRadius.circular(50),
                     border: isSelected
                         ? Border.all(color: const Color(0xFF5A8FF7), width: 2)
