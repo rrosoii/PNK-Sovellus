@@ -7,7 +7,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:health/health.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/chat.dart';
 import 'package:pnksovellus/pages/profile.dart';
@@ -75,14 +76,12 @@ final ScrollController _exerciseScroll = ScrollController();
 class _TrackerPageState extends State<TrackerPage> {
   int waterGlasses = 5;
 
-  Timer? _healthTimer;
+  late StreamSubscription<StepCount>? _stepSub;
 
   // Health / step tracking
-  final HealthFactory _health = HealthFactory();
   int todaySteps = 0;
   double todayDistanceKm = 0;
   double todayCalories = 0;
-  bool _loadingHealth = false;
 
   int selectedMood = 2;
   Map<int, int> moodMap = {};
@@ -106,25 +105,19 @@ class _TrackerPageState extends State<TrackerPage> {
   ];
 
   @override
-  void dispose() {
-    _healthTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   void initState() {
     super.initState();
     currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _loadMoodData();
     _loadExerciseData();
     _loadCustomActivities();
+    _startStepTracking();
+  }
 
-    _fetchTodayHealthData();
-    // refresh steps every 20 seconds
-    _healthTimer = Timer.periodic(
-      const Duration(seconds: 20),
-      (timer) => _fetchTodayHealthData(),
-    );
+  @override
+  void dispose() {
+    _stepSub?.cancel();
+    super.dispose();
   }
 
   double _distanceFromSteps(int steps) {
@@ -137,44 +130,6 @@ class _TrackerPageState extends State<TrackerPage> {
     return steps * 0.04;
   }
 
-  Future<void> _fetchTodayHealthData() async {
-    setState(() => _loadingHealth = true);
-
-    try {
-      final types = <HealthDataType>[
-        HealthDataType.STEPS,
-      ];
-
-      final now = DateTime.now();
-      final midnight = DateTime(now.year, now.month, now.day);
-
-      // Ask for permission
-      final allowed = await _health.requestAuthorization(types);
-
-      if (!allowed) {
-        setState(() => _loadingHealth = false);
-        return;
-      }
-
-      // Get steps for today
-      final steps = await _health.getTotalStepsInInterval(midnight, now);
-
-      final s = steps ?? 0;
-      final dist = _distanceFromSteps(s);
-      final kcal = _caloriesFromSteps(s);
-
-      setState(() {
-        todaySteps = s;
-        todayDistanceKm = dist;
-        todayCalories = kcal;
-        _loadingHealth = false;
-      });
-    } catch (e) {
-      // if it explodes, just fail silently and keep app alive
-      setState(() => _loadingHealth = false);
-    }
-  }
-
   Future<void> _loadCustomActivities() async {
     final prefs = await SharedPreferences.getInstance();
     customActivities = prefs.getStringList("custom_activities") ?? [];
@@ -184,6 +139,26 @@ class _TrackerPageState extends State<TrackerPage> {
   Future<void> _saveCustomActivities() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setStringList("custom_activities", customActivities);
+  }
+
+  Future<void> _startStepTracking() async {
+    final status = await Permission.activityRecognition.request();
+
+    if (!status.isGranted) {
+      debugPrint("Step permission denied");
+      return;
+    }
+
+    _stepSub = Pedometer.stepCountStream.listen(
+      (event) {
+        setState(() {
+          todaySteps = event.steps;
+          todayDistanceKm = _distanceFromSteps(todaySteps);
+          todayCalories = _caloriesFromSteps(todaySteps);
+        });
+      },
+      onError: (e) => debugPrint("Pedometer error: $e"),
+    );
   }
 
   // ========================= DECORATIVE BALLS =========================
@@ -780,15 +755,6 @@ class _TrackerPageState extends State<TrackerPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (_loadingHealth)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
                 Text(
                   "$displaySteps",
                   style: const TextStyle(
