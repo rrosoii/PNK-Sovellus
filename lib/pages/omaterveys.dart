@@ -1,4 +1,4 @@
-// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter
+﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -7,6 +7,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
@@ -74,7 +76,8 @@ class TrackerPage extends StatefulWidget {
 final ScrollController _exerciseScroll = ScrollController();
 
 class _TrackerPageState extends State<TrackerPage> {
-  int waterGlasses = 5;
+  int waterGlasses = 0;
+  Map<int, int> waterMap = {};
 
   late StreamSubscription<StepCount>? _stepSub;
 
@@ -109,6 +112,7 @@ class _TrackerPageState extends State<TrackerPage> {
     super.initState();
     currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _loadMoodData();
+    _loadWaterData();
     _loadExerciseData();
     _loadCustomActivities();
     _startStepTracking();
@@ -130,6 +134,13 @@ class _TrackerPageState extends State<TrackerPage> {
     return steps * 0.04;
   }
 
+  bool _isFutureDay(int day) {
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final thisDay = DateTime(currentMonth.year, currentMonth.month, day);
+    return thisDay.isAfter(todayDate);
+  }
+
   Future<void> _loadCustomActivities() async {
     final prefs = await SharedPreferences.getInstance();
     customActivities = prefs.getStringList("custom_activities") ?? [];
@@ -139,6 +150,76 @@ class _TrackerPageState extends State<TrackerPage> {
   Future<void> _saveCustomActivities() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setStringList("custom_activities", customActivities);
+  }
+
+  Future<void> _loadWaterData() async {
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_waterLocalKey(currentMonth)) ??
+          prefs.getString(_legacyWaterKey(currentMonth));
+
+      if (saved == null || saved.isEmpty) {
+        setState(() {
+          waterMap = {};
+          waterGlasses = 0;
+        });
+        return;
+      }
+
+      final mm = <int, int>{};
+      for (var p in saved.split(",")) {
+        if (p.contains(":")) {
+          final s = p.split(":");
+          mm[int.parse(s[0])] = int.parse(s[1]);
+        }
+      }
+
+      setState(() {
+        waterMap = mm;
+        waterGlasses = waterMap[selectedDay] ?? 0;
+      });
+      return;
+    }
+
+    try {
+      final docId = "water_${_monthId(currentMonth)}";
+      final doc = await _userHealthColl!.doc(docId).get();
+      final data = doc.data();
+      final mm = <int, int>{};
+      if (data != null && data['map'] is Map) {
+        (data['map'] as Map).forEach((k, v) {
+          mm[int.parse(k.toString())] = int.parse(v.toString());
+        });
+      }
+      setState(() {
+        waterMap = mm;
+        waterGlasses = waterMap[selectedDay] ?? 0;
+      });
+    } catch (e) {
+      debugPrint("Failed to load water from Firestore: $e");
+      setState(() {
+        waterMap = {};
+        waterGlasses = 0;
+      });
+    }
+  }
+
+  Future<void> _saveWaterData() async {
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final enc = waterMap.entries.map((e) => "${e.key}:${e.value}").join(",");
+      prefs.setString(_waterLocalKey(currentMonth), enc);
+      return;
+    }
+
+    try {
+      final docId = "water_${_monthId(currentMonth)}";
+      await _userHealthColl!.doc(docId).set(
+          {'map': waterMap.map((k, v) => MapEntry(k.toString(), v))},
+          SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Failed to save water to Firestore: $e");
+    }
   }
 
   Future<void> _startStepTracking() async {
@@ -292,67 +373,151 @@ class _TrackerPageState extends State<TrackerPage> {
 
   // ========================= DATA SAVE/LOAD =========================
 
-  String _monthKey(DateTime date) => "moods_${date.year}_${date.month}";
-  String _exerciseKey(DateTime date) => "exercise_${date.year}_${date.month}";
+  String _monthId(DateTime date) =>
+      "${date.year}_${date.month.toString().padLeft(2, '0')}";
+  String _moodLocalKey(DateTime date) => "moods_${_monthId(date)}";
+  String _exerciseLocalKey(DateTime date) => "exercise_${_monthId(date)}";
+  String _waterLocalKey(DateTime date) => "water_${_monthId(date)}";
+  String _legacyMoodKey(DateTime date) => "moods_${date.year}_${date.month}";
+  String _legacyExerciseKey(DateTime date) =>
+      "exercise_${date.year}_${date.month}";
+  String _legacyWaterKey(DateTime date) => "water_${date.year}_${date.month}";
+
+  bool get isLoggedIn => FirebaseAuth.instance.currentUser != null;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  CollectionReference<Map<String, dynamic>>? get _userHealthColl => _uid == null
+      ? null
+      : FirebaseFirestore.instance
+          .collection('users')
+          .doc(_uid)
+          .collection('health');
 
   Future<void> _loadMoodData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_monthKey(currentMonth));
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_moodLocalKey(currentMonth)) ??
+          prefs.getString(_legacyMoodKey(currentMonth));
 
-    if (saved == null || saved.isEmpty) {
-      setState(() => moodMap = {});
+      if (saved == null || saved.isEmpty) {
+        setState(() => moodMap = {});
+        return;
+      }
+
+      final pairs = saved.split(",");
+      final mm = <int, int>{};
+
+      for (var p in pairs) {
+        if (p.contains(":")) {
+          final s = p.split(":");
+          mm[int.parse(s[0])] = int.parse(s[1]);
+        }
+      }
+
+      setState(() => moodMap = mm);
       return;
     }
 
-    final pairs = saved.split(",");
-    final mm = <int, int>{};
-
-    for (var p in pairs) {
-      if (p.contains(":")) {
-        final s = p.split(":");
-        mm[int.parse(s[0])] = int.parse(s[1]);
+    try {
+      final docId = "moods_${_monthId(currentMonth)}";
+      final doc = await _userHealthColl!.doc(docId).get();
+      final data = doc.data();
+      final mm = <int, int>{};
+      if (data != null && data['map'] is Map) {
+        (data['map'] as Map).forEach((k, v) {
+          mm[int.parse(k.toString())] = int.parse(v.toString());
+        });
       }
+      setState(() => moodMap = mm);
+    } catch (e) {
+      debugPrint("Failed to load moods from Firestore: $e");
+      setState(() => moodMap = {});
     }
-
-    setState(() => moodMap = mm);
   }
 
   Future<void> _saveMoodData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final enc = moodMap.entries.map((e) => "${e.key}:${e.value}").join(",");
-    prefs.setString(_monthKey(currentMonth), enc);
-  }
-
-  Future<void> _loadExerciseData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_exerciseKey(currentMonth));
-
-    if (raw == null || raw.isEmpty) {
-      setState(() => exerciseLog = {});
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final enc = moodMap.entries.map((e) => "${e.key}:${e.value}").join(",");
+      prefs.setString(_moodLocalKey(currentMonth), enc);
       return;
     }
 
-    final Map<int, List<Map<String, String>>> temp = {};
+    try {
+      final docId = "moods_${_monthId(currentMonth)}";
+      await _userHealthColl!.doc(docId).set(
+          {'map': moodMap.map((k, v) => MapEntry(k.toString(), v))},
+          SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Failed to save moods to Firestore: $e");
+    }
+  }
 
-    for (var item in raw.split("&")) {
-      final parts = item.split("|");
-      if (parts.length != 4) continue;
-      final day = int.tryParse(parts[0]);
-      if (day == null) continue;
+  Future<void> _loadExerciseData() async {
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_exerciseLocalKey(currentMonth)) ??
+          prefs.getString(_legacyExerciseKey(currentMonth));
 
-      temp.putIfAbsent(day, () => []);
-      temp[day]!.add({
-        "type": parts[1],
-        "duration": parts[2],
-        "distance": parts[3],
-      });
+      if (raw == null || raw.isEmpty) {
+        setState(() => exerciseLog = {});
+        return;
+      }
+
+      final Map<int, List<Map<String, String>>> temp = {};
+
+      for (var item in raw.split("&")) {
+        final parts = item.split("|");
+        if (parts.length != 4) continue;
+        final day = int.tryParse(parts[0]);
+        if (day == null) continue;
+
+        temp.putIfAbsent(day, () => []);
+        temp[day]!.add({
+          "type": parts[1],
+          "duration": parts[2],
+          "distance": parts[3],
+        });
+      }
+
+      setState(() => exerciseLog = temp);
+      return;
     }
 
-    setState(() => exerciseLog = temp);
+    try {
+      final docId = "exercise_${_monthId(currentMonth)}";
+      final doc = await _userHealthColl!.doc(docId).get();
+      final data = doc.data();
+      final raw = data != null ? data['raw'] as String? : null;
+
+      if (raw == null || raw.isEmpty) {
+        setState(() => exerciseLog = {});
+        return;
+      }
+
+      final Map<int, List<Map<String, String>>> temp = {};
+
+      for (var item in raw.split("&")) {
+        final parts = item.split("|");
+        if (parts.length != 4) continue;
+        final day = int.tryParse(parts[0]);
+        if (day == null) continue;
+
+        temp.putIfAbsent(day, () => []);
+        temp[day]!.add({
+          "type": parts[1],
+          "duration": parts[2],
+          "distance": parts[3],
+        });
+      }
+
+      setState(() => exerciseLog = temp);
+    } catch (e) {
+      debugPrint("Failed to load exercises from Firestore: $e");
+      setState(() => exerciseLog = {});
+    }
   }
 
   Future<void> _saveExerciseData() async {
-    final prefs = await SharedPreferences.getInstance();
     final List<String> encoded = [];
 
     exerciseLog.forEach((day, list) {
@@ -364,7 +529,22 @@ class _TrackerPageState extends State<TrackerPage> {
       }
     });
 
-    await prefs.setString(_exerciseKey(currentMonth), encoded.join("&"));
+    final raw = encoded.join("&");
+
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_exerciseLocalKey(currentMonth), raw);
+      return;
+    }
+
+    try {
+      final docId = "exercise_${_monthId(currentMonth)}";
+      await _userHealthColl!
+          .doc(docId)
+          .set({'raw': raw}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Failed to save exercises to Firestore: $e");
+    }
   }
 
   void _prevMonth() {
@@ -372,6 +552,7 @@ class _TrackerPageState extends State<TrackerPage> {
       currentMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
     });
     _loadMoodData();
+    _loadWaterData();
     _loadExerciseData();
   }
 
@@ -380,6 +561,7 @@ class _TrackerPageState extends State<TrackerPage> {
       currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
     });
     _loadMoodData();
+    _loadWaterData();
     _loadExerciseData();
   }
 
@@ -434,7 +616,7 @@ class _TrackerPageState extends State<TrackerPage> {
                       // ===================== CALENDAR =====================
                       Positioned.fill(
                         child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
+                          physics: const NeverScrollableScrollPhysics(),
                           child: Column(
                             children: [
                               const SizedBox(height: 10),
@@ -612,9 +794,9 @@ class _TrackerPageState extends State<TrackerPage> {
         ),
         const SizedBox(height: 10),
         _buildWaterAndMoods(today),
-        const SizedBox(height: 15),
+        const SizedBox(height: 8),
         _buildStepArc(),
-        const SizedBox(height: 15),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -632,7 +814,13 @@ class _TrackerPageState extends State<TrackerPage> {
                 onTap: () {
                   setState(() {
                     if (waterGlasses > 0) waterGlasses--;
+                    if (waterGlasses > 0) {
+                      waterMap[selectedDay] = waterGlasses;
+                    } else {
+                      waterMap.remove(selectedDay);
+                    }
                   });
+                  _saveWaterData();
                 },
                 child: Icon(
                   Icons.remove_circle_outline,
@@ -686,7 +874,11 @@ class _TrackerPageState extends State<TrackerPage> {
               // plus button
               GestureDetector(
                 onTap: () {
-                  setState(() => waterGlasses++);
+                  setState(() {
+                    waterGlasses++;
+                    waterMap[selectedDay] = waterGlasses;
+                  });
+                  _saveWaterData();
                 },
                 child: Icon(
                   Icons.add_circle_outline,
@@ -705,6 +897,7 @@ class _TrackerPageState extends State<TrackerPage> {
 
               return GestureDetector(
                 onTap: () {
+                  if (_isFutureDay(selectedDay)) return;
                   setState(() {
                     if (moodMap[selectedDay] == i) {
                       // tap same mood again -> clear it
@@ -757,76 +950,81 @@ class _TrackerPageState extends State<TrackerPage> {
     final int displaySteps =
         todaySteps; // or todaySteps == 0 ? steps : todaySteps;
 
-    return Column(
-      children: [
-        CustomPaint(
-          painter: StepArcPainter(steps: displaySteps),
-          child: SizedBox(
-            height: 180,
-            width: 200,
+    return SizedBox(
+      height: 170,
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          CustomPaint(
+            painter: StepArcPainter(steps: displaySteps),
+            child: SizedBox(
+              height: 150,
+              width: 200,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    "$displaySteps",
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF233A72),
+                    ),
+                  ),
+                  const Text(
+                    "/ 10000",
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 4,
+            left: 24,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  "Matka",
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
                 Text(
-                  "$displaySteps",
+                  "${todayDistanceKm.toStringAsFixed(2)} km",
                   style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF233A72),
                   ),
                 ),
-                const Text(
-                  "/ 10000",
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-                const SizedBox(height: 10),
               ],
             ),
           ),
-        ),
-
-        // small summary row below the arc
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  const Text(
-                    "Matka",
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+          Positioned(
+            bottom: 4,
+            right: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  "Energia",
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                Text(
+                  "${todayCalories.toStringAsFixed(0)} kcal",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF233A72),
                   ),
-                  Text(
-                    "${todayDistanceKm.toStringAsFixed(2)} km",
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF233A72),
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                children: [
-                  const Text(
-                    "Energia",
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                  Text(
-                    "${todayCalories.toStringAsFixed(0)} kcal",
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF233A72),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -906,6 +1104,7 @@ class _TrackerPageState extends State<TrackerPage> {
 
               final day = index - (startWeekday - 2);
 
+              final bool isFuture = _isFutureDay(day);
               final isToday = today.year == currentMonth.year &&
                   today.month == currentMonth.month &&
                   today.day == day;
@@ -953,10 +1152,12 @@ class _TrackerPageState extends State<TrackerPage> {
                     } else {
                       selectedMood = -1; // no mood for this day
                     }
+                    waterGlasses = waterMap[day] ?? 0;
                   });
                 },
                 onLongPress: () {
-                  if (selectedMood < 0) return; // nothing to apply
+                  if (selectedMood < 0 || isFuture)
+                    return; // nothing to apply / future locked
                   setState(() {
                     moodMap[day] = selectedMood;
                   });
