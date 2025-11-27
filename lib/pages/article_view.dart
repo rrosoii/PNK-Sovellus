@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'article_model.dart';
 
@@ -15,7 +17,6 @@ class ArticleViewPage extends StatelessWidget {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -27,21 +28,20 @@ class ArticleViewPage extends StatelessWidget {
                 child: Image.network(article.imageUrl),
               ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             Text(
               article.title,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-
             Text(
               "${article.author} • ${article.date}",
               style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
-            Text(article.content, style: const TextStyle(fontSize: 16, height: 1.6)),
+            Text(article.content, style: TextStyle(fontSize: 16, height: 1.6)),
           ],
         ),
       ),
