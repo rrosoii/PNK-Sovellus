@@ -17,7 +17,7 @@ class ArticleViewPage extends StatelessWidget {
       ),
 
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -27,21 +27,21 @@ class ArticleViewPage extends StatelessWidget {
                 child: Image.network(article.imageUrl),
               ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             Text(
               article.title,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
 
             Text(
               "${article.author} • ${article.date}",
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-            Text(article.content, style: TextStyle(fontSize: 16, height: 1.6)),
+            Text(article.content, style: const TextStyle(fontSize: 16, height: 1.6)),
           ],
         ),
       ),
