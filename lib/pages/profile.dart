@@ -1,9 +1,11 @@
-// ignore_for_file: use_build_context_synchronously, prefer_const_constructors, deprecated_member_use
+﻿// ignore_for_file: use_build_context_synchronously, prefer_const_constructors, deprecated_member_use
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +19,33 @@ class _ProfilePageState extends State<ProfilePage> {
   String email = "example@email.com"; // temporary
   String profileType = "";
   File? avatarImage;
+  String? joinDate;
+
+  List<Map<String, dynamic>> activeChallenges = [];
+  List<Map<String, dynamic>> completedChallenges = [];
+  bool loadingChallenges = true;
+  final Map<String, Map<String, dynamic>> _challengeMeta = {
+    "steps_10000_week": {
+      "title": "K\u00e4velyhaaste",
+      "icon": Icons.directions_walk,
+      "durationDays": 7
+    },
+    "exercise_daily_14": {
+      "title": "Liiku jokap\u00e4iv\u00e4",
+      "icon": Icons.fitness_center,
+      "durationDays": 14
+    },
+    "exercise_weekly_5": {
+      "title": "Liiku aktiivisesti",
+      "icon": Icons.run_circle_outlined,
+      "durationDays": 7
+    },
+    "steps_100k_month": {
+      "title": "100 000 askelta",
+      "icon": Icons.flag,
+      "durationDays": 30
+    },
+  };
 
   bool editingName = false;
   final _nameController = TextEditingController();
@@ -25,6 +54,8 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _ensureJoinDate();
+    _loadChallengeProgress();
   }
 
   Future<void> _loadUserData() async {
@@ -49,6 +80,23 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString("username", newName);
   }
 
+  Future<void> _ensureJoinDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString("join_date");
+    if (saved != null && saved.isNotEmpty) {
+      setState(() => joinDate = saved);
+      return;
+    }
+
+    final today = _formatDate(DateTime.now());
+    await prefs.setString("join_date", today);
+    setState(() => joinDate = today);
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}";
+  }
+
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
 
@@ -64,6 +112,68 @@ class _ProfilePageState extends State<ProfilePage> {
       await prefs.setString("avatar_path", pickedFile.path);
 
       setState(() {});
+    }
+  }
+
+  Future<void> _loadChallengeProgress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        loadingChallenges = false;
+        activeChallenges = [];
+        completedChallenges = [];
+      });
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
+
+      final data = doc.data() ?? {};
+      final Map<String, dynamic> challenges =
+          (data["activeChallenges"] ?? {}) as Map<String, dynamic>;
+
+      final List<Map<String, dynamic>> active = [];
+      final List<Map<String, dynamic>> completed = [];
+
+      challenges.forEach((id, value) {
+        if (value is! Map<String, dynamic>) return;
+        final bool isActive = value["isActive"] == true;
+        final int currentDay = (value["currentDay"] ?? 0) as int;
+        final int totalDays = (value["durationDays"] ??
+            _challengeMeta[id]?["durationDays"] ??
+            1) as int;
+        final double progress =
+            totalDays > 0 ? (currentDay / totalDays).clamp(0.0, 1.0) : 0.0;
+        final meta = _challengeMeta[id];
+        final String title = meta?["title"] as String? ?? id;
+        final IconData icon = meta?["icon"] as IconData? ?? Icons.emoji_events;
+        final entry = {
+          "id": id,
+          "title": title,
+          "icon": icon,
+          "progress": progress,
+        };
+
+        if (isActive) {
+          active.add(entry);
+        } else if (currentDay >= totalDays) {
+          completed.add(entry);
+        }
+      });
+
+      setState(() {
+        activeChallenges = active;
+        completedChallenges = completed;
+        loadingChallenges = false;
+      });
+    } catch (_) {
+      setState(() {
+        loadingChallenges = false;
+      });
     }
   }
 
@@ -157,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       backgroundImage: avatarImage != null
                           ? FileImage(avatarImage!)
                           : const AssetImage("assets/avatar.png")
-                                as ImageProvider,
+                              as ImageProvider,
                     ),
                   ),
 
@@ -275,7 +385,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _infoCard("Liittymispäivä", "20.10.2025"),
+        _infoCard("Liittymispäivä", joinDate ?? "—"),
         _infoCard("Hyvinvointiprofiili", profileType),
       ],
     );
@@ -347,26 +457,72 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              const Text(
-                "Askelhaaste",
+          if (loadingChallenges)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            Row(
+              children: [
+                const Text(
+                  "Aktiiviset haasteet",
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                Text(
+                  "Päivittyy automaattisesti",
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (activeChallenges.isEmpty)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Ei aktiivisia haasteita juuri nyt.",
+                  style: TextStyle(color: Colors.black54),
+                ),
+              )
+            else
+              ...activeChallenges
+                  .map(
+                    (c) => _progressRow(
+                      c["icon"] as IconData? ?? Icons.flag,
+                      c["title"] as String? ?? "",
+                      (c["progress"] as double? ?? 0).clamp(0.0, 1.0),
+                    ),
+                  )
+                  .toList(),
+            const SizedBox(height: 16),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Valmiit haasteet",
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              const Spacer(),
-              Text(
-                "Näytä kaikki →",
-                style: TextStyle(
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w600,
+            ),
+            const SizedBox(height: 8),
+            if (completedChallenges.isEmpty)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Ei suoritetuista haasteista merkintää.",
+                  style: TextStyle(color: Colors.black54),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          _progressRow(Icons.flash_on, "Askelhaaste", 0.28),
-          _progressRow(Icons.water_drop, "Juomahaaste", 0.35),
-          _progressRow(Icons.local_fire_department, "Kirjautumisputki", 0.62),
+              )
+            else
+              ...completedChallenges
+                  .map(
+                    (c) => _progressRow(
+                      c["icon"] as IconData? ?? Icons.flag,
+                      c["title"] as String? ?? "",
+                      1.0,
+                    ),
+                  )
+                  .toList(),
+          ],
         ],
       ),
     );
@@ -438,7 +594,7 @@ class _ProfilePageState extends State<ProfilePage> {
             top: 12,
             right: 16,
             child: Text(
-              "Näytä kaikki →",
+              "Näytä kaikki ->",
               style: TextStyle(
                 color: Colors.blue.shade700,
                 fontWeight: FontWeight.w600,

@@ -14,6 +14,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final SupportBot _bot = SupportBot();
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   final List<Map<String, String>> messages = [];
   int _currentIndex = 2;
@@ -25,6 +26,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       messages.add({"sender": "user", "text": text});
     });
+    _scrollToBottom();
 
     _controller.clear();
 
@@ -33,6 +35,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         messages.add({"sender": "bot", "text": reply});
       });
+      _scrollToBottom();
     });
   }
 
@@ -63,6 +66,24 @@ class _ChatPageState extends State<ChatPage> {
         );
         break;
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,9 +166,11 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildMessages() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      controller: _scrollController,
+      reverse: true,
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        final msg = messages[index];
+        final msg = messages[messages.length - 1 - index];
         final bool isUser = msg["sender"] == "user";
         final Color bubbleColor =
             isUser ? const Color(0xFF2E5AAC) : Colors.white;
@@ -170,7 +193,7 @@ class _ChatPageState extends State<ChatPage> {
                   ? []
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -221,7 +244,7 @@ class _ChatPageState extends State<ChatPage> {
                   controller: _controller,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    hintText: "Kysy esim. unesta, vedestä tai liikunnasta...",
+                    hintText: "Kirjoita viesti",
                     border: InputBorder.none,
                   ),
                   onSubmitted: (_) => sendMessage(),
