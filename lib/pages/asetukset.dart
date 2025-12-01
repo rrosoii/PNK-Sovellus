@@ -10,7 +10,6 @@ import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
-import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class AsetuksetPage extends StatefulWidget {
   const AsetuksetPage({super.key});
