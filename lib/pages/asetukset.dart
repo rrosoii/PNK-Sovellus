@@ -404,43 +404,82 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                       _buildRow("Personalisointi", Icons.chevron_right),
                       const SizedBox(height: 35),
 
-                      Center(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.logout,
-                            color: Color.fromARGB(255, 73, 108, 130),
-                          ),
-                          title: const Center(
-                            child: Text(
-                              "Kirjaudu ulos",
-                              style: TextStyle(
-                                color: Color.fromARGB(255, 73, 108, 130),
-                                fontWeight: FontWeight.bold,
+                      if (_isLoggedIn) ...[
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.logout,
+                              color: Color.fromARGB(255, 73, 108, 130),
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Kirjaudu ulos",
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 73, 108, 130),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                            onTap: _logout,
                           ),
-                          onTap: _logout,
                         ),
-                      ),
 
-                      Center(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.delete_forever,
-                            color: Colors.red,
-                          ),
-                          title: const Center(
-                            child: Text(
-                              "Poista tili pysyvästi",
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Poista tili pysyvasti",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                            onTap: _deleteAccount,
                           ),
-                          onTap: _deleteAccount,
                         ),
-                      ),
+                      ] else ...[
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.person_add_alt,
+                              color: Color.fromARGB(255, 73, 108, 130),
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Luo tili",
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 73, 108, 130),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            onTap: _goToSignUp,
+                          ),
+                        ),
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.login,
+                              color: Color.fromARGB(255, 73, 108, 130),
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Kirjaudu sisaan",
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 73, 108, 130),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            onTap: _goToLogin,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

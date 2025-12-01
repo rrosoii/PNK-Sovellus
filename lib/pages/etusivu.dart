@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use, prefer_const_constructors, unused_import
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/main.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
@@ -10,6 +11,12 @@ import 'omaterveys.dart';
 import 'package:pnksovellus/pages/challenge_page.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
+import 'package:pnksovellus/services/event_service.dart';
+import 'package:pnksovellus/services/ajankohtaista_service.dart';
+import 'package:pnksovellus/pages/ajankohtaista_detail.dart';
+import 'package:pnksovellus/pages/article_service.dart';
+import 'package:pnksovellus/pages/article_model.dart';
+import 'package:pnksovellus/pages/article_view.dart';
 
 class ArticlesListPage extends StatelessWidget {
   const ArticlesListPage({super.key});
@@ -33,12 +40,41 @@ class Etusivu extends StatefulWidget {
 class _EtusivuState extends State<Etusivu> {
   String? userProfile;
   bool loadingProfile = true;
+  bool loadingArticles = false;
   final UserDataService _dataService = UserDataService();
+  final PageController _articleController =
+      PageController(viewportFraction: 0.9);
+  final EventService _eventService = EventService();
+  final AjankohtaistaService _ajankohtaistaService = AjankohtaistaService();
+  final ArticleService _articleService = ArticleService();
+  final TextEditingController _searchController = TextEditingController();
+  List<AjankohtaistaItem> _ajankohtaista = [];
+  List<Article> _allArticles = [];
+  List<Article> _searchResults = [];
+  int _currentArticleIndex = 0;
+  Timer? _articleTimer;
+  Timer? _searchDebounce;
+
+  int get _pageCount {
+    // 1 for events + N ajankohtaista items
+    return 1 + _ajankohtaista.length;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadArticles();
+    _startArticleAutoScroll();
+  }
+
+  @override
+  void dispose() {
+    _articleTimer?.cancel();
+    _searchDebounce?.cancel();
+    _articleController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -52,6 +88,35 @@ class _EtusivuState extends State<Etusivu> {
       // Even if loading fails, show the page so the user isn't stuck on a blank screen.
       setState(() => loadingProfile = false);
     }
+  }
+
+  Future<void> _loadArticles() async {
+    setState(() => loadingArticles = true);
+    try {
+      final articles = await _articleService.getArticles();
+      setState(() {
+        _allArticles = articles;
+        loadingArticles = false;
+      });
+    } catch (_) {
+      setState(() => loadingArticles = false);
+    }
+  }
+
+  void _startArticleAutoScroll() {
+    _articleTimer?.cancel();
+    _articleTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+      if (!mounted) return;
+      final count = _pageCount;
+      if (count == 0) return;
+      final nextPage = (_currentArticleIndex + 1) % count;
+      _articleController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+      _currentArticleIndex = nextPage;
+    });
   }
 
   @override
@@ -72,7 +137,7 @@ class _EtusivuState extends State<Etusivu> {
                       child: Stack(
                         children: [
                           Positioned(
-                            top: 400,
+                            top: 440, // slightly higher than before so it peeks less
                             left: -300,
                             child: Container(
                               width: 1000,
@@ -111,9 +176,20 @@ class _EtusivuState extends State<Etusivu> {
 
                                 // Search bar
                                 TextField(
+                                  controller: _searchController,
+                                  onChanged: _onSearchChanged,
                                   decoration: InputDecoration(
                                     hintText: 'Hae artikkeleja',
                                     prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              _onSearchChanged('');
+                                            },
+                                          )
+                                        : null,
                                     filled: true,
                                     fillColor: Colors.white,
                                     contentPadding: const EdgeInsets.symmetric(
@@ -128,6 +204,23 @@ class _EtusivuState extends State<Etusivu> {
 
                                 const SizedBox(height: 20),
 
+                                if (loadingArticles)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 8.0),
+                                    child: LinearProgressIndicator(
+                                      minHeight: 3,
+                                      color: Color(0xFF2E5AAC),
+                                      backgroundColor:
+                                          Color.fromRGBO(46, 90, 172, 0.15),
+                                    ),
+                                  ),
+                                if (_searchResults.isNotEmpty)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.only(top: 12, bottom: 8),
+                                    child: _buildSearchResults(),
+                                  ),
+
                                 // Welcome text
                                 const Text(
                                   'Tervetuloa takaisin!',
@@ -140,95 +233,34 @@ class _EtusivuState extends State<Etusivu> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Article PageView
+                                                                // Events + Ajankohtaista PageView
                                 SizedBox(
-                                  height: 180,
-                                  child: PageView.builder(
-                                    controller: PageController(
-                                      viewportFraction: 0.9,
-                                    ),
-                                    itemCount: 3,
-                                    itemBuilder: (context, index) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 8,
-                                        ),
-                                        child: Material(
-                                          elevation: 8,
-                                          shadowColor: Colors.black.withOpacity(
-                                            0.25,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            child: Container(
-                                              color: Colors.white,
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Container(
-                                                    height: 100,
-                                                    width: double.infinity,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[200],
-                                                      borderRadius:
-                                                          const BorderRadius
-                                                              .vertical(
-                                                        top: Radius.circular(
-                                                          16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    child: const Center(
-                                                      child: Icon(
-                                                        Icons.image,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const Padding(
-                                                    padding: EdgeInsets.all(
-                                                      8.0,
-                                                    ),
-                                                    child: Text(
-                                                      'Influenssarokote tehokkain suoja influenssaa ja sen jälkitauteja vastaan',
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const Padding(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                      horizontal: 8.0,
-                                                    ),
-                                                    child: Text(
-                                                      '20.10.2025',
-                                                      style: TextStyle(
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                  height: 230,
+                                  child: StreamBuilder<List<AjankohtaistaItem>>(
+                                    stream: _ajankohtaistaService.latest(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        _ajankohtaista = snapshot.data!;
+                                      }
+                                      return PageView.builder(
+                                        controller: _articleController,
+                                        itemCount: _pageCount,
+                                        onPageChanged: (index) {
+                                          _currentArticleIndex = index;
+                                        },
+                                        itemBuilder: (context, index) {
+                                          if (index == 0) {
+                                            return _buildEventsSlide();
+                                          }
+                                          final item =
+                                              _ajankohtaista[index - 1];
+                                          return _buildAjankohtaistaCard(item);
+                                        },
                                       );
                                     },
                                   ),
                                 ),
-
-                                const SizedBox(height: 50),
+const SizedBox(height: 50),
 
                                 // Achievements
                                 Center(
@@ -768,6 +800,349 @@ class _EtusivuState extends State<Etusivu> {
     }
   }
 
+  Widget _buildEventsSlide() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        elevation: 8,
+        shadowColor: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      'Tapahtumakalenteri',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Icon(Icons.calendar_today, size: 18, color: Colors.blue),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: StreamBuilder<List<EventItem>>(
+                    stream: _eventService.upcomingEvents(limit: 5),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
+                      }
+                      final events = snapshot.data ?? [];
+                      if (events.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Ei tulevia tapahtumia juuri nyt.\nLisää ne Firebasen events-kokoelmaan.',
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        padding: EdgeInsets.zero,
+                        itemCount: events.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 12,
+                          color: Colors.grey.withOpacity(0.25),
+                        ),
+                        itemBuilder: (context, i) {
+                          final e = events[i];
+                          final date =
+                              '${e.date.day.toString().padLeft(2, '0')}.${e.date.month.toString().padLeft(2, '0')}.${e.date.year}';
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color.fromRGBO(46, 90, 172, 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${e.date.day}\n${_monthShortFi(e.date)}',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: Color(0xFF2E5AAC),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      e.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      date,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    if (e.location != null &&
+                                        e.location!.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.place,
+                                              size: 14, color: Colors.blue),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              e.location!,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (e.description != null &&
+                                        e.description!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        e.description!,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF5D6A7C),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAjankohtaistaCard(AjankohtaistaItem item) {
+    final date =
+        '${item.date.day.toString().padLeft(2, '0')}.${item.date.month.toString().padLeft(2, '0')}.${item.date.year}';
+    final preview = (() {
+      final raw = (item.body ?? '').replaceAll('\n', ' ').trim();
+      if (raw.length <= 110) return raw;
+      return '${raw.substring(0, 110)}…';
+    })();
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        elevation: 8,
+        shadowColor: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AjankohtaistaDetailPage(item: item),
+              ),
+            );
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 105,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      image: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                          ? DecorationImage(
+                              image: NetworkImage(item.imageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                    ),
+                    child: (item.imageUrl == null || item.imageUrl!.isEmpty)
+                        ? const Center(
+                            child: Icon(Icons.image, color: Colors.grey),
+                          )
+                        : null,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            date,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (preview.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              preview,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF5D6A7C),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _monthShortFi(DateTime date) {
+    const months = [
+      'tam',
+      'hel',
+      'maa',
+      'huh',
+      'tou',
+      'kes',
+      'hei',
+      'elo',
+      'syy',
+      'lok',
+      'mar',
+      'jou'
+    ];
+    return months[date.month - 1];
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      final lower = query.toLowerCase();
+      final matches = _allArticles.where((a) {
+        return a.title.toLowerCase().contains(lower) ||
+            a.content.toLowerCase().contains(lower) ||
+            a.category.toLowerCase().contains(lower);
+      }).toList();
+      // Sort so title hits first
+      matches.sort((a, b) {
+        final aTitleHit = a.title.toLowerCase().contains(lower) ? 1 : 0;
+        final bTitleHit = b.title.toLowerCase().contains(lower) ? 1 : 0;
+        if (aTitleHit != bTitleHit) return bTitleHit - aTitleHit;
+        return a.title.compareTo(b.title);
+      });
+      setState(() => _searchResults = matches.take(5).toList());
+    });
+  }
+
+  Widget _buildSearchResults() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _searchResults.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: Colors.grey.withOpacity(0.2),
+        ),
+        itemBuilder: (context, i) {
+          final art = _searchResults[i];
+          return ListTile(
+            leading: const Icon(Icons.article_outlined, color: Color(0xFF2E5AAC)),
+            title: Text(
+              art.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              art.date.isNotEmpty ? art.date : art.category,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ArticleViewPage(article: art),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
 class CategoryChip extends StatelessWidget {
