@@ -488,7 +488,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }
