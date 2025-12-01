@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'support_bot.dart';
+import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -98,6 +99,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 2),
     );
   }
 }

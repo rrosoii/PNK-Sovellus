@@ -42,11 +42,16 @@ class _EtusivuState extends State<Etusivu> {
   }
 
   Future<void> _loadProfile() async {
-    final data = await _dataService.loadProfileData();
-    setState(() {
-      userProfile = data.profileType;
-      loadingProfile = false;
-    });
+    try {
+      final data = await _dataService.loadProfileData();
+      setState(() {
+        userProfile = data.profileType;
+        loadingProfile = false;
+      });
+    } catch (_) {
+      // Even if loading fails, show the page so the user isn't stuck on a blank screen.
+      setState(() => loadingProfile = false);
+    }
   }
 
   @override
@@ -66,7 +71,6 @@ class _EtusivuState extends State<Etusivu> {
                       ),
                       child: Stack(
                         children: [
-                          _decorBalls(),
                           Positioned(
                             top: 400,
                             left: -300,
@@ -167,11 +171,25 @@ class _EtusivuState extends State<Etusivu> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  Image.asset(
-                                                    '',
+                                                  Container(
                                                     height: 100,
                                                     width: double.infinity,
-                                                    fit: BoxFit.cover,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[200],
+                                                      borderRadius:
+                                                          const BorderRadius
+                                                              .vertical(
+                                                        top: Radius.circular(
+                                                          16,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: const Center(
+                                                      child: Icon(
+                                                        Icons.image,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
                                                   ),
                                                   const Padding(
                                                     padding: EdgeInsets.all(
@@ -425,40 +443,6 @@ class _EtusivuState extends State<Etusivu> {
               ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
-    );
-  }
-
-  Widget _decorBalls() {
-    return IgnorePointer(
-      ignoring: true,
-      child: Stack(
-        children: [
-          Positioned(
-            top: -150,
-            left: -120,
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color.fromRGBO(46, 90, 172, 0.23),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -90,
-            left: 50,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color.fromRGBO(46, 90, 172, 0.16),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -735,32 +719,51 @@ class _EtusivuState extends State<Etusivu> {
           ),
         ],
       );
-    } else {
-      return Stack(
-        children: [
-          IconButton(
-            icon: Icon(icon, color: Colors.blue, size: 25),
-            tooltip: tooltip,
-            onPressed: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('$tooltip avattu')));
-            },
-          ),
-          if (icon == Icons.notifications)
-            Positioned(
-              right: 10,
-              top: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
-                ),
+    } else if (icon == Icons.notifications) {
+      final notifications = <Map<String, String>>[
+        {"title": "Uusi haaste", "body": "Kokeile uutta kävelyhaastetta!"},
+        {"title": "Muistutus", "body": "Juomapulssi tänään vielä tekemättä."},
+        {"title": "Artikkeli", "body": "Lue: 5 tapaa parantaa yöuniasi."},
+      ];
+
+      return PopupMenuButton<int>(
+        icon: const Icon(Icons.notifications, color: Colors.blue, size: 25),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: Colors.white,
+        offset: const Offset(0, 40),
+        itemBuilder: (context) => [
+          for (var n in notifications)
+            PopupMenuItem(
+              enabled: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    n["title"] ?? "",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF485885),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    n["body"] ?? "",
+                    style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  ),
+                ],
               ),
             ),
         ],
+      );
+    } else {
+      return IconButton(
+        icon: Icon(icon, color: Colors.blue, size: 25),
+        tooltip: tooltip,
+        onPressed: () {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('$tooltip avattu')));
+        },
       );
     }
   }

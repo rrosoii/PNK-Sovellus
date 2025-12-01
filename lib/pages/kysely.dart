@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
 
 void main() {
   runApp(const QuizApp());
@@ -29,6 +29,7 @@ class QuizPage extends StatefulWidget {
 
 class _QuizPageState extends State<QuizPage> {
   int _currentQuestionIndex = 0;
+  final UserDataService _dataService = UserDataService();
 
   // Profile points tally
   Map<String, int> profilePoints = {'Koala': 0, 'Susi': 0, 'Delfiini': 0};
@@ -95,8 +96,7 @@ class _QuizPageState extends State<QuizPage> {
           .reduce((a, b) => a.value >= b.value ? a : b)
           .key;
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userProfile', finalProfile);
+      await _dataService.saveProfileType(finalProfile);
 
       Navigator.pushReplacement(
         context,

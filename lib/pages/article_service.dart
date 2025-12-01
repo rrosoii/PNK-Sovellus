@@ -7,22 +7,34 @@ class ArticleService {
   );
 
   Future<List<Article>> getArticles() async {
-    final snapshot = await _ref.get();
-    return snapshot.docs
-        .map(
-          (doc) =>
-              Article.fromFirestore(doc.id, doc.data() as Map<String, dynamic>),
-        )
-        .toList();
+    try {
+      final snapshot = await _ref.get();
+      return snapshot.docs
+          .map(
+            (doc) => Article.fromFirestore(
+              doc.id,
+              doc.data() as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<List<Article>> getArticlesByCategory(String category) async {
-    final snapshot = await _ref.where("category", isEqualTo: category).get();
-    return snapshot.docs
-        .map(
-          (doc) =>
-              Article.fromFirestore(doc.id, doc.data() as Map<String, dynamic>),
-        )
-        .toList();
+    try {
+      final snapshot = await _ref.where("category", isEqualTo: category).get();
+      return snapshot.docs
+          .map(
+            (doc) => Article.fromFirestore(
+              doc.id,
+              doc.data() as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
   }
 }

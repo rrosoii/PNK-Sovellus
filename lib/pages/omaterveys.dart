@@ -9,10 +9,9 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pnksovellus/pages/etusivu.dart';
-import 'package:pnksovellus/pages/chat.dart';
-import 'package:pnksovellus/pages/profile.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
+import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 final IconData defaultCustomIcon = Icons.star;
 
@@ -86,8 +85,6 @@ class _TrackerPageState extends State<TrackerPage> {
   int selectedMood = 2;
   Map<int, int> moodMap = {};
 
-  int _currentIndex = 1;
-
   late DateTime currentMonth;
   int selectedDay = DateTime.now().day;
 
@@ -96,6 +93,7 @@ class _TrackerPageState extends State<TrackerPage> {
 
   // persisted custom activities (shared with AddExerciseSheet)
   List<String> customActivities = [];
+  final UserDataService _dataService = UserDataService();
 
   // REAL WORKING ICON LIST
   final moodIcons = [
@@ -131,14 +129,12 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Future<void> _loadCustomActivities() async {
-    final prefs = await SharedPreferences.getInstance();
-    customActivities = prefs.getStringList("custom_activities") ?? [];
+    customActivities = await _dataService.loadCustomActivities();
     setState(() {});
   }
 
   Future<void> _saveCustomActivities() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList("custom_activities", customActivities);
+    await _dataService.saveCustomActivities(customActivities);
   }
 
   Future<void> _startStepTracking() async {
@@ -156,6 +152,7 @@ class _TrackerPageState extends State<TrackerPage> {
           todayDistanceKm = _distanceFromSteps(todaySteps);
           todayCalories = _caloriesFromSteps(todaySteps);
         });
+        _dataService.recordStepsForDate(DateTime.now(), todaySteps);
       },
       onError: (e) => debugPrint("Pedometer error: $e"),
     );
@@ -296,8 +293,7 @@ class _TrackerPageState extends State<TrackerPage> {
   String _exerciseKey(DateTime date) => "exercise_${date.year}_${date.month}";
 
   Future<void> _loadMoodData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_monthKey(currentMonth));
+    final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
 
     if (saved == null || saved.isEmpty) {
       setState(() => moodMap = {});
@@ -318,14 +314,12 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Future<void> _saveMoodData() async {
-    final prefs = await SharedPreferences.getInstance();
     final enc = moodMap.entries.map((e) => "${e.key}:${e.value}").join(",");
-    prefs.setString(_monthKey(currentMonth), enc);
+    await _dataService.saveMoodData(_monthKey(currentMonth), enc);
   }
 
   Future<void> _loadExerciseData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_exerciseKey(currentMonth));
+    final raw = await _dataService.loadExerciseData(_exerciseKey(currentMonth));
 
     if (raw == null || raw.isEmpty) {
       setState(() => exerciseLog = {});
@@ -352,7 +346,6 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Future<void> _saveExerciseData() async {
-    final prefs = await SharedPreferences.getInstance();
     final List<String> encoded = [];
 
     exerciseLog.forEach((day, list) {
@@ -364,7 +357,15 @@ class _TrackerPageState extends State<TrackerPage> {
       }
     });
 
-    await prefs.setString(_exerciseKey(currentMonth), encoded.join("&"));
+    await _dataService.saveExerciseData(
+      _exerciseKey(currentMonth),
+      encoded.join("&"),
+    );
+  }
+
+  Future<void> _recordExerciseForChallenges() async {
+    final date = DateTime(currentMonth.year, currentMonth.month, selectedDay);
+    await _dataService.recordExerciseForDate(date, count: 1);
   }
 
   void _prevMonth() {
@@ -381,39 +382,6 @@ class _TrackerPageState extends State<TrackerPage> {
     });
     _loadMoodData();
     _loadExerciseData();
-  }
-
-  void _navigate(int index) {
-    if (index == _currentIndex) return;
-
-    setState(() => _currentIndex = index);
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const Etusivu()),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TrackerPage()),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ChatPage()),
-        );
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfilePage()),
-        );
-        break;
-    }
   }
 
   @override
@@ -584,7 +552,7 @@ class _TrackerPageState extends State<TrackerPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );
   }
 
@@ -1023,6 +991,7 @@ class _TrackerPageState extends State<TrackerPage> {
               exerciseLog[selectedDay]!.add(result);
             });
             _saveExerciseData();
+            _recordExerciseForChallenges();
           }
         },
         child: Container(
@@ -1111,6 +1080,7 @@ class _TrackerPageState extends State<TrackerPage> {
                       exerciseLog[selectedDay]!.add(autoEntry);
                     });
                     _saveExerciseData();
+                    _recordExerciseForChallenges();
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1421,67 +1391,6 @@ class _TrackerPageState extends State<TrackerPage> {
     );
   }
 
-  // ========================= BOTTOM NAV =========================
-
-  Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home, 'Etusivu', 0),
-          _buildNavItem(Icons.bar_chart_rounded, 'OmaTerveys', 1),
-          _buildNavItem(Icons.chat_bubble_outline, 'Chatti', 2),
-          _buildNavItem(Icons.person_outline, 'Profiili', 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final bool isSelected = _currentIndex == index;
-
-    return GestureDetector(
-      onTap: () => _navigate(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.blue : Colors.blueGrey,
-              size: 22,
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ========================= STEP ARC PAINTER =========================

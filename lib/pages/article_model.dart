@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
 class Article {
   final String id;
   final String title;
@@ -18,11 +21,22 @@ class Article {
   });
 
   factory Article.fromFirestore(String id, Map<String, dynamic> data) {
+    String _formatDate(dynamic value) {
+      if (value is String) return value;
+      // Handle Firestore Timestamp
+      try {
+        if (value is Timestamp) {
+          return DateFormat("dd.MM.yyyy").format(value.toDate());
+        }
+      } catch (_) {}
+      return "";
+    }
+
     return Article(
       id: id,
       title: data["title"] ?? "",
       author: data["author"] ?? "",
-      date: data["date"] ?? "",
+      date: _formatDate(data["date"]),
       category: data["category"] ?? "",
       content: data["content"] ?? "",
       imageUrl: data["imageUrl"] ?? "",

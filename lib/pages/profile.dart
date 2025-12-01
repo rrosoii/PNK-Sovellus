@@ -3,7 +3,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pnksovellus/routes/route_observer.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
+import 'package:pnksovellus/pages/kysely.dart';
+import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -12,7 +15,7 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage> with RouteAware {
   String username = "";
   String email = "example@email.com"; // temporary
   String profileType = "";
@@ -20,6 +23,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool editingName = false;
   final _nameController = TextEditingController();
+  final UserDataService _dataService = UserDataService();
 
   @override
   void initState() {
@@ -27,16 +31,37 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Refresh data if returning from a page that might update profile info
+    _loadUserData();
+  }
+
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final data = await _dataService.loadProfileData();
 
-    username = prefs.getString("username") ?? "Käyttäjä";
-    profileType = prefs.getString("userProfile") ?? "Koala";
+    username = data.username;
+    profileType = data.profileType;
 
-    // Sync email if you add it later
-    String? avatarPath = prefs.getString("avatar_path");
-    if (avatarPath != null && File(avatarPath).existsSync()) {
-      avatarImage = File(avatarPath);
+    if (data.avatarPath != null && File(data.avatarPath!).existsSync()) {
+      avatarImage = File(data.avatarPath!);
+    } else {
+      avatarImage = null;
     }
 
     _nameController.text = username;
@@ -45,8 +70,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveName(String newName) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("username", newName);
+    await _dataService.saveProfileName(newName);
   }
 
   Future<void> _pickAvatar() async {
@@ -60,8 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (pickedFile != null) {
       avatarImage = File(pickedFile.path);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("avatar_path", pickedFile.path);
+      await _dataService.saveAvatarPath(pickedFile.path);
 
       setState(() {});
     }
@@ -71,6 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE7F0FF),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -418,34 +442,88 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSurveyCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      height: 150,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 12,
-            right: 16,
-            child: Text(
-              "Näytä kaikki →",
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontWeight: FontWeight.w600,
-              ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const QuizPage()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF5A8DEE), Color(0xFF8BC6FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.assignment,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text(
+                      "Selvitä hyvinvointiprofiilisi",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Color(0xFF1E2A39),
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      "Vastaa kyselyyn ja saa henkilökohtainen profiili.",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF5D6A7C),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Color(0xFF5A6B82),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

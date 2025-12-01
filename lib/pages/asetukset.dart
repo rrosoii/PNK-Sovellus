@@ -6,6 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pnksovellus/pages/home.dart';
+import 'package:pnksovellus/pages/log_in.dart';
+import 'package:pnksovellus/routes/route_observer.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
+import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class AsetuksetPage extends StatefulWidget {
   const AsetuksetPage({super.key});
@@ -14,11 +18,12 @@ class AsetuksetPage extends StatefulWidget {
   State<AsetuksetPage> createState() => _AsetuksetPageState();
 }
 
-class _AsetuksetPageState extends State<AsetuksetPage> {
+class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   File? _avatarImage;
   final ImagePicker _picker = ImagePicker();
   bool ilmoitukset = true;
   String _username = "Lissu";
+  final UserDataService _dataService = UserDataService();
 
   final double innerPadding = 20;
 
@@ -29,17 +34,37 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
     _loadUsername();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Refresh when coming back from another page (e.g., Profile)
+    _loadAvatarPath();
+    _loadUsername();
+  }
+
   Future<void> _loadUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('username');
-    if (savedName != null && savedName.isNotEmpty) {
-      setState(() => _username = savedName);
+    final data = await _dataService.loadProfileData();
+    if (data.username.isNotEmpty) {
+      setState(() => _username = data.username);
     }
   }
 
   Future<void> _saveUsername(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', name);
+    await _dataService.saveProfileName(name);
   }
 
   void _editUsername() {
@@ -115,15 +140,16 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
   }
 
   Future<void> _saveAvatarPath(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('avatar_path', path);
+    await _dataService.saveAvatarPath(path);
   }
 
   Future<void> _loadAvatarPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('avatar_path');
+    final data = await _dataService.loadProfileData();
+    final path = data.avatarPath;
     if (path != null && File(path).existsSync()) {
       setState(() => _avatarImage = File(path));
+    } else {
+      setState(() => _avatarImage = null);
     }
   }
 
@@ -244,6 +270,8 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLoggedIn = FirebaseAuth.instance.currentUser != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFFEFF4FF),
       body: Column(
@@ -362,43 +390,71 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
 
                       const SizedBox(height: 35),
 
-                      Center(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.logout,
-                            color: Color.fromARGB(255, 73, 108, 130),
-                          ),
-                          title: const Center(
-                            child: Text(
-                              "Kirjaudu ulos",
-                              style: TextStyle(
-                                color: Color.fromARGB(255, 73, 108, 130),
-                                fontWeight: FontWeight.bold,
+                      if (!isLoggedIn)
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.login,
+                              color: Color.fromARGB(255, 73, 108, 130),
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Kirjaudu sisään",
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 73, 108, 130),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginPage(),
+                                ),
+                              );
+                            },
                           ),
-                          onTap: _logout,
+                        )
+                      else ...[
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.logout,
+                              color: Color.fromARGB(255, 73, 108, 130),
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Kirjaudu ulos",
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 73, 108, 130),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            onTap: _logout,
+                          ),
                         ),
-                      ),
 
-                      Center(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.delete_forever,
-                            color: Colors.red,
-                          ),
-                          title: const Center(
-                            child: Text(
-                              "Poista tili pysyvästi",
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
+                        Center(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                            ),
+                            title: const Center(
+                              child: Text(
+                                "Poista tili pysyvästi",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                            onTap: _deleteAccount,
                           ),
-                          onTap: _deleteAccount,
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -407,6 +463,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }

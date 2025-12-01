@@ -10,6 +10,7 @@ class ChallengePage extends StatefulWidget {
   final String type;
   final int durationDays;
   final int? requiredSteps;
+  final int? targetCount;
 
   const ChallengePage({
     super.key,
@@ -19,6 +20,7 @@ class ChallengePage extends StatefulWidget {
     required this.type,
     required this.durationDays,
     this.requiredSteps,
+    this.targetCount,
   });
 
   @override
@@ -28,6 +30,7 @@ class ChallengePage extends StatefulWidget {
 class _ChallengePageState extends State<ChallengePage> {
   bool loading = true;
   Map<String, dynamic>? activeChallenge;
+  String? _error;
 
   @override
   void initState() {
@@ -36,23 +39,47 @@ class _ChallengePageState extends State<ChallengePage> {
   }
 
   Future<void> loadChallenge() async {
-    final user = FirebaseAuth.instance.currentUser!;
-    final doc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(user.uid)
-        .get();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        loading = false;
+        _error = "Kirjaudu sisään aloittaaksesi haasteet.";
+        activeChallenge = null;
+      });
+      return;
+    }
 
-    final challenges = doc.data()?["activeChallenges"] ?? {};
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
 
-    setState(() {
-      activeChallenge = challenges[widget.challengeId];
-      loading = false;
-    });
+      final challenges = doc.data()?["activeChallenges"] ?? {};
+
+      setState(() {
+        activeChallenge = challenges[widget.challengeId];
+        loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+        _error = "Haasteen lataus epäonnistui.";
+      });
+    }
   }
 
   Future<void> startChallenge() async {
-    final user = FirebaseAuth.instance.currentUser!;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Kirjaudu sisään aloittaaksesi haasteet")),
+      );
+      return;
+    }
     final date = DateFormat("yyyy-MM-dd").format(DateTime.now());
+    final target = _defaultTarget();
 
     await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
       "activeChallenges": {
@@ -64,6 +91,7 @@ class _ChallengePageState extends State<ChallengePage> {
           "dailyProgress": {},
           "requiredSteps": widget.requiredSteps,
           "type": widget.type,
+          "target": target,
         }
       }
     }, SetOptions(merge: true));
@@ -72,7 +100,11 @@ class _ChallengePageState extends State<ChallengePage> {
   }
 
   Future<void> cancelChallenge() async {
-    final user = FirebaseAuth.instance.currentUser!;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Navigator.pop(context);
+      return;
+    }
     await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
       "activeChallenges": {
         widget.challengeId: {"isActive": false}
@@ -87,6 +119,33 @@ class _ChallengePageState extends State<ChallengePage> {
     if (loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Takaisin"),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -193,23 +252,15 @@ class _ChallengePageState extends State<ChallengePage> {
   Widget _buildActiveUI(BuildContext context) {
     const textBlue = Color(0xFF485885);
 
-    final todayKey = DateFormat("yyyy-MM-dd").format(DateTime.now());
-    final stepsToday = activeChallenge?["dailyProgress"]?[todayKey] ?? 0;
-
-    final requiredSteps = widget.requiredSteps ?? 10000;
-
-    final dailyProgress = (stepsToday / requiredSteps).clamp(0.0, 1.0);
-
-    final currentDay = activeChallenge?["currentDay"] ?? 0;
-    final totalDays = activeChallenge?["durationDays"] ?? widget.durationDays;
-
-    final totalProgress = (currentDay + dailyProgress) / totalDays;
+    final totalProgress = _calculateProgress();
+    final statusText = _statusText(totalProgress);
+    final detail = _progressDetail();
 
     return Column(
       children: [
-        const Text(
-          "Melkein valmis!",
-          style: TextStyle(
+        Text(
+          statusText,
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: textBlue,
@@ -229,6 +280,13 @@ class _ChallengePageState extends State<ChallengePage> {
             fontWeight: FontWeight.bold,
             color: textBlue,
           ),
+        ),
+
+        const SizedBox(height: 12),
+        Text(
+          detail,
+          style: const TextStyle(color: Colors.black54),
+          textAlign: TextAlign.center,
         ),
 
         const SizedBox(height: 40),
@@ -277,5 +335,149 @@ class _ChallengePageState extends State<ChallengePage> {
         ],
       ),
     );
+  }
+
+  int _defaultTarget() {
+    switch (widget.type) {
+      case "exerciseWeekly":
+        return widget.targetCount ?? widget.requiredSteps ?? 5;
+      case "exercise":
+        return widget.targetCount ?? widget.requiredSteps ?? widget.durationDays;
+      case "stepsAccumulated":
+        return widget.requiredSteps ?? 100000;
+      case "steps":
+      default:
+        return widget.requiredSteps ?? 10000;
+    }
+  }
+
+  double _calculateProgress() {
+    if (activeChallenge == null) return 0;
+    final type = activeChallenge?["type"] as String? ?? widget.type;
+    final start =
+        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
+    final target = activeChallenge?["target"] ?? _defaultTarget();
+    final daily = Map<String, dynamic>.from(
+      activeChallenge?["dailyProgress"] as Map<String, dynamic>? ?? {},
+    );
+    final end = start.add(Duration(days: duration));
+
+    double progress = 0;
+
+    switch (type) {
+      case "stepsAccumulated":
+        final totalSteps = _entriesInRange(daily, start, end).fold<int>(
+          0,
+          (prev, entry) =>
+              prev +
+              ((entry.value is num)
+                  ? (entry.value as num).toInt()
+                  : int.tryParse("${entry.value}") ?? 0),
+        );
+        progress = (totalSteps / target).clamp(0.0, 1.0);
+        break;
+      case "exerciseWeekly":
+      case "exercise":
+        final totalSessions = _entriesInRange(daily, start, end).fold<int>(
+          0,
+          (prev, entry) =>
+              prev +
+              ((entry.value is num)
+                  ? (entry.value as num).toInt()
+                  : int.tryParse("${entry.value}") ?? 0),
+        );
+        progress = (totalSessions / target).clamp(0.0, 1.0);
+        break;
+      case "steps":
+      default:
+        final perDaySum = _entriesInRange(daily, start, end).fold<double>(
+          0,
+          (prev, entry) {
+            final steps = (entry.value is num)
+                ? (entry.value as num).toDouble()
+                : double.tryParse("${entry.value}") ?? 0;
+            return prev + (steps / target).clamp(0.0, 1.0);
+          },
+        );
+        progress = (perDaySum / duration).clamp(0.0, 1.0);
+        break;
+    }
+
+    return progress;
+  }
+
+  String _statusText(double progress) {
+    if (activeChallenge == null) return "Aloita haaste";
+    final start =
+        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
+    final end = start.add(Duration(days: duration));
+
+    if (progress >= 1.0) {
+      return "Haaste suoritettu!";
+    }
+
+    if (DateTime.now().isAfter(end)) {
+      return "Haaste päättynyt";
+    }
+
+    return "Haaste käynnissä";
+  }
+
+  String _progressDetail() {
+    if (activeChallenge == null) return "";
+    final type = activeChallenge?["type"] as String? ?? widget.type;
+    final target = activeChallenge?["target"] ?? _defaultTarget();
+    final daily = Map<String, dynamic>.from(
+      activeChallenge?["dailyProgress"] as Map<String, dynamic>? ?? {},
+    );
+    final start =
+        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
+    final end = start.add(Duration(days: duration));
+    final entries = _entriesInRange(daily, start, end);
+
+    switch (type) {
+      case "stepsAccumulated":
+        final totalSteps = entries.fold<int>(
+          0,
+          (prev, entry) =>
+              prev +
+              ((entry.value is num)
+                  ? (entry.value as num).toInt()
+                  : int.tryParse("${entry.value}") ?? 0),
+        );
+        return "$totalSteps / $target askelta";
+      case "exerciseWeekly":
+      case "exercise":
+        final totalSessions = entries.fold<int>(
+          0,
+          (prev, entry) =>
+              prev +
+              ((entry.value is num)
+                  ? (entry.value as num).toInt()
+                  : int.tryParse("${entry.value}") ?? 0),
+        );
+        return "$totalSessions / $target suoritusta";
+      case "steps":
+      default:
+        final daysHit = entries
+            .map((entry) => (entry.value is num)
+                ? (entry.value as num).toDouble()
+                : double.tryParse("${entry.value}") ?? 0)
+            .where((v) => v >= target)
+            .length;
+        return "$daysHit / ${activeChallenge?["durationDays"] ?? widget.durationDays} päivää saavutettu";
+    }
+  }
+
+  Iterable<MapEntry<String, dynamic>> _entriesInRange(
+      Map<String, dynamic> daily, DateTime start, DateTime end) {
+    return daily.entries.where((e) {
+      final d = DateTime.tryParse(e.key);
+      if (d == null) return false;
+      return !d.isBefore(start) && !d.isAfter(end);
+    });
   }
 }

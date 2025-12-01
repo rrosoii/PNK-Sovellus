@@ -14,11 +14,16 @@ import 'pages/chat.dart';
 import 'pages/profile.dart';
 import 'pages/log_in.dart'; // <-- login page
 import 'pages/luo_tili.dart'; // <-- signup page
+import 'routes/route_observer.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('fi_FI', null);
+  final notificationService = NotificationService();
+  await notificationService.init();
+  await notificationService.scheduleHydrationReminder();
 
   runApp(const MyApp());
 }
@@ -31,6 +36,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('fi', 'FI'),
+      navigatorObservers: [appRouteObserver],
 
       // 👇 THIS decides which screen loads first
       home: StreamBuilder<User?>(
@@ -48,8 +54,8 @@ class MyApp extends StatelessWidget {
             return const Etusivu();
           }
 
-          // 👇 User is NOT logged in → go to LoginPage
-          return const LoginPage();
+          // 👇 User is NOT logged in → go to Homepage
+          return const Homepage();
         },
       ),
 

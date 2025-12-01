@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/luo_tili.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
 
 class Login extends StatelessWidget {
   const Login({super.key});
@@ -39,6 +40,8 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      await UserDataService().syncFromCloudToLocal();
 
       // Navigate to home after login
       Navigator.pushReplacement(
