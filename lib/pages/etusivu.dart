@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pnksovellus/main.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
-import 'package:pnksovellus/pages/profile.dart';
 import 'package:pnksovellus/pages/chat.dart';
 import 'package:pnksovellus/pages/article_page.dart';
 import 'omaterveys.dart';
@@ -137,7 +136,8 @@ class _EtusivuState extends State<Etusivu> {
                       child: Stack(
                         children: [
                           Positioned(
-                            top: 440, // slightly higher than before so it peeks less
+                            top:
+                                440, // slightly higher than before so it peeks less
                             left: -300,
                             child: Container(
                               width: 1000,
@@ -181,15 +181,16 @@ class _EtusivuState extends State<Etusivu> {
                                   decoration: InputDecoration(
                                     hintText: 'Hae artikkeleja',
                                     prefixIcon: const Icon(Icons.search),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.close),
-                                            onPressed: () {
-                                              _searchController.clear();
-                                              _onSearchChanged('');
-                                            },
-                                          )
-                                        : null,
+                                    suffixIcon:
+                                        _searchController.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.close),
+                                                onPressed: () {
+                                                  _searchController.clear();
+                                                  _onSearchChanged('');
+                                                },
+                                              )
+                                            : null,
                                     filled: true,
                                     fillColor: Colors.white,
                                     contentPadding: const EdgeInsets.symmetric(
@@ -216,8 +217,8 @@ class _EtusivuState extends State<Etusivu> {
                                   ),
                                 if (_searchResults.isNotEmpty)
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.only(top: 12, bottom: 8),
+                                    padding: const EdgeInsets.only(
+                                        top: 12, bottom: 8),
                                     child: _buildSearchResults(),
                                   ),
 
@@ -233,7 +234,7 @@ class _EtusivuState extends State<Etusivu> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                                                // Events + Ajankohtaista PageView
+                                // Events + Ajankohtaista PageView
                                 SizedBox(
                                   height: 230,
                                   child: StreamBuilder<List<AjankohtaistaItem>>(
@@ -260,7 +261,7 @@ class _EtusivuState extends State<Etusivu> {
                                     },
                                   ),
                                 ),
-const SizedBox(height: 50),
+                                const SizedBox(height: 50),
 
                                 // Achievements
                                 Center(
@@ -397,7 +398,8 @@ const SizedBox(height: 50),
                                           style: TextStyle(
                                             color: Colors.blue,
                                             fontWeight: FontWeight.w500,
-                                            decoration: TextDecoration.underline,
+                                            decoration:
+                                                TextDecoration.underline,
                                             decorationColor: Colors.blue,
                                           ),
                                         ),
@@ -411,57 +413,76 @@ const SizedBox(height: 50),
                                 Divider(
                                   thickness: 0.8,
                                   height: 1,
-                                  color: Colors.grey.withOpacity(0.3), // subtle like in your pic
+                                  color: Colors.grey.withOpacity(
+                                      0.3), // subtle like in your pic
                                 ),
 
                                 const SizedBox(height: 12),
 
-
                                 const SizedBox(height: 12),
 
                                 SizedBox(
-                                    height: 150, // enough to fit your bigger chips
-                                    child: ListView(
-                                      scrollDirection: Axis.horizontal,
-                                      padding: const EdgeInsets.only(left: 8),
-                                      children: const [
-                                        CategoryChip(
-                                          icon: Icons.bedtime,
-                                          label: 'Uni',
-                                          gradientColors: [Color(0xFF74B9FF), Color(0xFF6CA7FF)],
-                                          iconGradient: [Color(0xFF5FA8FF), Color(0xFF2F7CFF)],
-                                        ),
-                                        SizedBox(width: 16),
-
-                                        CategoryChip(
-                                          icon: Icons.restaurant_menu,
-                                          label: 'Ravinto',
-                                          gradientColors: [Color(0xFFC39BFF), Color(0xFFB28CFF)],
-                                          iconGradient: [Color(0xFFB785FF), Color(0xFF9F60FF)],
-                                        ),
-                                        SizedBox(width: 16),
-
-                                        CategoryChip(
-                                          icon: Icons.favorite,
-                                          label: 'Sydän',
-                                          gradientColors: [Color(0xFF7DEFA5), Color(0xFF57DB80)],
-                                          iconGradient: [Color(0xFF63E690), Color(0xFF34C967)],
-                                        ),
-                                        SizedBox(width: 16),
-
-                                        CategoryChip(
-                                          icon: Icons.bolt,
-                                          label: 'Energia',
-                                          gradientColors: [Color(0xFF8EF0E6), Color(0xFF63D8CF)],
-                                          iconGradient: [Color(0xFF6AEFE0), Color(0xFF30CABA)],
-                                        ),
-                                        SizedBox(width: 16),
-                                      ],
-                                    ),
+                                  height:
+                                      150, // enough to fit your bigger chips
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.only(left: 8),
+                                    children: const [
+                                      CategoryChip(
+                                        icon: Icons.bedtime,
+                                        label: 'Uni',
+                                        gradientColors: [
+                                          Color(0xFF74B9FF),
+                                          Color(0xFF6CA7FF)
+                                        ],
+                                        iconGradient: [
+                                          Color(0xFF5FA8FF),
+                                          Color(0xFF2F7CFF)
+                                        ],
+                                      ),
+                                      SizedBox(width: 16),
+                                      CategoryChip(
+                                        icon: Icons.restaurant_menu,
+                                        label: 'Ravinto',
+                                        gradientColors: [
+                                          Color(0xFFC39BFF),
+                                          Color(0xFFB28CFF)
+                                        ],
+                                        iconGradient: [
+                                          Color(0xFFB785FF),
+                                          Color(0xFF9F60FF)
+                                        ],
+                                      ),
+                                      SizedBox(width: 16),
+                                      CategoryChip(
+                                        icon: Icons.favorite,
+                                        label: 'Sydän',
+                                        gradientColors: [
+                                          Color(0xFF7DEFA5),
+                                          Color(0xFF57DB80)
+                                        ],
+                                        iconGradient: [
+                                          Color(0xFF63E690),
+                                          Color(0xFF34C967)
+                                        ],
+                                      ),
+                                      SizedBox(width: 16),
+                                      CategoryChip(
+                                        icon: Icons.bolt,
+                                        label: 'Energia',
+                                        gradientColors: [
+                                          Color(0xFF8EF0E6),
+                                          Color(0xFF63D8CF)
+                                        ],
+                                        iconGradient: [
+                                          Color(0xFF6AEFE0),
+                                          Color(0xFF30CABA)
+                                        ],
+                                      ),
+                                      SizedBox(width: 16),
+                                    ],
                                   ),
-
-
-
+                                ),
 
                                 const SizedBox(height: 50),
                               ],
@@ -473,7 +494,7 @@ const SizedBox(height: 50),
                   );
                 },
               ),
-      ),
+            ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
@@ -579,8 +600,7 @@ const SizedBox(height: 50),
             // Text area
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 255, 255, 255),
                 borderRadius: const BorderRadius.only(
@@ -695,61 +715,15 @@ const SizedBox(height: 50),
 
   Widget _buildIconButton(IconData icon, String tooltip) {
     if (icon == Icons.settings) {
-      return PopupMenuButton<int>(
+      return IconButton(
         icon: const Icon(Icons.settings, color: Colors.blue, size: 25),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.white,
-        offset: const Offset(0, 40),
-        onSelected: (value) {
-          if (value == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AsetuksetPage()),
-            );
-          }
-          if (value == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfilePage()),
-            );
-          }
+        tooltip: 'Asetukset',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AsetuksetPage()),
+          );
         },
-        itemBuilder: (context) => [
-          const PopupMenuItem(
-            value: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  color: Color.fromARGB(255, 72, 78, 133),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "Profiili",
-                  style: TextStyle(color: Color.fromARGB(255, 72, 78, 133)),
-                ),
-              ],
-            ),
-          ),
-          const PopupMenuItem(
-            value: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.settings_outlined,
-                  color: Color.fromARGB(255, 72, 78, 133),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "Asetukset",
-                  style: TextStyle(color: Color.fromARGB(255, 72, 78, 133)),
-                ),
-              ],
-            ),
-          ),
-        ],
       );
     } else if (icon == Icons.notifications) {
       final notifications = <Map<String, String>>[
@@ -1118,7 +1092,8 @@ const SizedBox(height: 50),
         itemBuilder: (context, i) {
           final art = _searchResults[i];
           return ListTile(
-            leading: const Icon(Icons.article_outlined, color: Color(0xFF2E5AAC)),
+            leading:
+                const Icon(Icons.article_outlined, color: Color(0xFF2E5AAC)),
             title: Text(
               art.title,
               maxLines: 1,
@@ -1162,8 +1137,8 @@ class CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 130,     // bigger width
-      height: 130,    // bigger height
+      width: 130, // bigger width
+      height: 130, // bigger height
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         gradient: LinearGradient(
