@@ -22,11 +22,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('fi_FI', null);
-  final notificationService = NotificationService();
-  await notificationService.init();
-  await notificationService.scheduleHydrationReminder();
 
   runApp(const MyApp());
+
+  // Initialize notifications after the UI is up so the splash screen
+  // is not blocked if permissions hang.
+  _setupNotifications();
 }
 
 class MyApp extends StatelessWidget {
@@ -73,5 +74,16 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
       },
     );
+  }
+}
+
+Future<void> _setupNotifications() async {
+  try {
+    final notificationService = NotificationService();
+    await notificationService.init();
+    await notificationService.scheduleHydrationReminder();
+  } catch (e, st) {
+    debugPrint('Notification setup failed: $e');
+    debugPrintStack(stackTrace: st);
   }
 }
