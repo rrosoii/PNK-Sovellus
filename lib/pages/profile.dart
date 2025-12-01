@@ -3,6 +3,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/pages/kysely.dart';
@@ -58,27 +61,6 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
     _loadUserData();
     _ensureJoinDate();
     _loadChallengeProgress();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final route = ModalRoute.of(context);
-    if (route is PageRoute) {
-      appRouteObserver.subscribe(this, route);
-    }
-  }
-
-  @override
-  void dispose() {
-    appRouteObserver.unsubscribe(this);
-    super.dispose();
-  }
-
-  @override
-  void didPopNext() {
-    // Refresh data if returning from a page that might update profile info
-    _loadUserData();
   }
 
   @override

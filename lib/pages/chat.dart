@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'support_bot.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
+import 'support_bot.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -15,7 +15,6 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
 
   final List<Map<String, String>> messages = [];
-  int _currentIndex = 2;
 
   void sendMessage() {
     String text = _controller.text.trim();
@@ -35,35 +34,6 @@ class _ChatPageState extends State<ChatPage> {
       });
       _scrollToBottom();
     });
-  }
-
-  void _navigate(int index) {
-    if (index == _currentIndex) return;
-
-    setState(() => _currentIndex = index);
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const Etusivu()),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TrackerPage()),
-        );
-        break;
-      case 2:
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfilePage()),
-        );
-        break;
-    }
   }
 
   void _scrollToBottom() {
@@ -117,20 +87,20 @@ class _ChatPageState extends State<ChatPage> {
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: SafeArea(
+        child: const SafeArea(
           child: Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.white,
                 child:
                     Icon(Icons.tag_faces, color: Color(0xFF2E5AAC), size: 26),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Text(
                     "Lissu",
                     style: TextStyle(
@@ -191,7 +161,7 @@ class _ChatPageState extends State<ChatPage> {
                   ? []
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -272,19 +242,6 @@ class _ChatPageState extends State<ChatPage> {
   // ===================== BOTTOM NAV =====================
 
   Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 2),
-    );
+    return const AppBottomNav(currentIndex: 2);
   }
 }

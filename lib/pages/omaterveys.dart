@@ -379,6 +379,9 @@ class _TrackerPageState extends State<TrackerPage> {
   String _legacyExerciseKey(DateTime date) =>
       "exercise_${date.year}_${date.month}";
   String _legacyWaterKey(DateTime date) => "water_${date.year}_${date.month}";
+  String _monthKey(DateTime date) =>
+      "${date.year}_${date.month.toString().padLeft(2, '0')}";
+  String _exerciseKey(DateTime date) => "exercise_${_monthId(date)}";
 
   bool get isLoggedIn => FirebaseAuth.instance.currentUser != null;
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -390,8 +393,8 @@ class _TrackerPageState extends State<TrackerPage> {
           .collection('health');
 
   Future<void> _loadMoodData() async {
-    final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
-
+    if (!isLoggedIn) {
+      final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
       if (saved == null || saved.isEmpty) {
         setState(() => moodMap = {});
         return;
@@ -399,7 +402,6 @@ class _TrackerPageState extends State<TrackerPage> {
 
       final pairs = saved.split(",");
       final mm = <int, int>{};
-
       for (var p in pairs) {
         if (p.contains(":")) {
           final s = p.split(":");
@@ -434,15 +436,14 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Future<void> _loadExerciseData() async {
-    final raw = await _dataService.loadExerciseData(_exerciseKey(currentMonth));
-
+    if (!isLoggedIn) {
+      final raw = await _dataService.loadExerciseData(_exerciseKey(currentMonth));
       if (raw == null || raw.isEmpty) {
         setState(() => exerciseLog = {});
         return;
       }
 
       final Map<int, List<Map<String, String>>> temp = {};
-
       for (var item in raw.split("&")) {
         final parts = item.split("|");
         if (parts.length != 4) continue;
@@ -473,7 +474,6 @@ class _TrackerPageState extends State<TrackerPage> {
       }
 
       final Map<int, List<Map<String, String>>> temp = {};
-
       for (var item in raw.split("&")) {
         final parts = item.split("|");
         if (parts.length != 4) continue;

@@ -24,6 +24,8 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   final ImagePicker _picker = ImagePicker();
   bool ilmoitukset = true;
   String _username = "Lissu";
+  bool _isLoggedIn = false;
+  final UserDataService _dataService = UserDataService();
 
   final double innerPadding = 20;
 
@@ -52,6 +54,9 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
 
   @override
   void didPopNext() {
+    setState(() {
+      _isLoggedIn = FirebaseAuth.instance.currentUser != null;
+    });
     // Refresh when coming back from another page (e.g., Profile)
     _loadAvatarPath();
     _loadUsername();
@@ -285,8 +290,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLoggedIn = FirebaseAuth.instance.currentUser != null;
-
     return Scaffold(
       backgroundColor: const Color(0xFFEFF4FF),
       body: Column(

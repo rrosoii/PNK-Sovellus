@@ -5,7 +5,6 @@ import 'package:flutter/gestures.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:pnksovellus/pages/etusivu.dart';
-import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 

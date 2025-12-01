@@ -21,7 +21,7 @@ class Article {
   });
 
   factory Article.fromFirestore(String id, Map<String, dynamic> data) {
-    String _formatDate(dynamic value) {
+    String formatDate(dynamic value) {
       if (value is String) return value;
       // Handle Firestore Timestamp
       try {
@@ -36,7 +36,7 @@ class Article {
       id: id,
       title: data["title"] ?? "",
       author: data["author"] ?? "",
-      date: _formatDate(data["date"]),
+      date: formatDate(data["date"]),
       category: data["category"] ?? "",
       content: data["content"] ?? "",
       imageUrl: data["imageUrl"] ?? "",

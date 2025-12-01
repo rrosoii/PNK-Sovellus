@@ -55,7 +55,7 @@ class NotificationService {
       'Kirjaa tämänhetkinen vedenjuonti.',
       RepeatInterval.hourly,
       details,
-      androidAllowWhileIdle: true,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 }
