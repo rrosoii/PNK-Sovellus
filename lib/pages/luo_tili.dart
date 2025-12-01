@@ -98,10 +98,11 @@ class _SignUpPageState extends State<SignUpPage> {
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => (Homepage())),
-                  );
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context, rootNavigator: true).maybePop();
+                  }
                 },
               ),
               const SizedBox(height: 20),

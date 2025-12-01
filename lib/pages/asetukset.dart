@@ -1,8 +1,9 @@
-// ignore_for_file: deprecated_member_use, unused_field, unused_element, use_build_context_synchronously, prefer_const_constructors
+﻿// ignore_for_file: deprecated_member_use, unused_field, unused_element, use_build_context_synchronously, prefer_const_constructors
 
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pnksovellus/pages/home.dart';
@@ -23,13 +24,13 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   final ImagePicker _picker = ImagePicker();
   bool ilmoitukset = true;
   String _username = "Lissu";
-  final UserDataService _dataService = UserDataService();
 
   final double innerPadding = 20;
 
   @override
   void initState() {
     super.initState();
+    _isLoggedIn = FirebaseAuth.instance.currentUser != null;
     _loadAvatarPath();
     _loadUsername();
   }
@@ -107,6 +108,20 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
       });
       _saveAvatarPath(pickedFile.path);
     }
+  }
+
+  void _goToLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const Login()),
+    );
+  }
+
+  void _goToSignUp() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const Luotili()),
+    );
   }
 
   void _showImagePickerDialog() {
@@ -316,7 +331,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
               ),
             ),
           ),
-
           Expanded(
             child: Transform.translate(
               offset: const Offset(0, -35),
@@ -348,7 +362,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                               backgroundImage: _avatarImage != null
                                   ? FileImage(_avatarImage!)
                                   : const AssetImage('assets/avatar.png')
-                                        as ImageProvider,
+                                      as ImageProvider,
                             ),
                           ),
                           SizedBox(width: 20),
@@ -375,86 +389,55 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                           ),
                         ],
                       ),
-
                       SizedBox(height: 20),
                       _buildRow("Muokkaa profiilia", Icons.chevron_right),
-                      _buildRow("Vaihda salasana", Icons.chevron_right),
-                      _buildRow("Lisää maksutapa", Icons.add),
+                      if (_isLoggedIn)
+                        _buildRow("Vaihda salasana", Icons.chevron_right),
                       _buildSwitchRow("Ilmoitukset"),
-
                       SizedBox(height: 20),
                       _buildRow("Tietoa meistä", Icons.chevron_right),
-                      _buildRow("Tietosuojakäytäntö", Icons.chevron_right),
+                      _buildRow("Tietosuojakäytäntä", Icons.chevron_right),
                       _buildRow("Ehdot", Icons.chevron_right),
                       _buildRow("Personalisointi", Icons.chevron_right),
-
                       const SizedBox(height: 35),
 
-                      if (!isLoggedIn)
-                        Center(
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.login,
-                              color: Color.fromARGB(255, 73, 108, 130),
-                            ),
-                            title: const Center(
-                              child: Text(
-                                "Kirjaudu sisään",
-                                style: TextStyle(
-                                  color: Color.fromARGB(255, 73, 108, 130),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      Center(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.logout,
+                            color: Color.fromARGB(255, 73, 108, 130),
+                          ),
+                          title: const Center(
+                            child: Text(
+                              "Kirjaudu ulos",
+                              style: TextStyle(
+                                color: Color.fromARGB(255, 73, 108, 130),
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const LoginPage(),
-                                ),
-                              );
-                            },
                           ),
-                        )
-                      else ...[
-                        Center(
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.logout,
-                              color: Color.fromARGB(255, 73, 108, 130),
-                            ),
-                            title: const Center(
-                              child: Text(
-                                "Kirjaudu ulos",
-                                style: TextStyle(
-                                  color: Color.fromARGB(255, 73, 108, 130),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            onTap: _logout,
-                          ),
+                          onTap: _logout,
                         ),
+                      ),
 
-                        Center(
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.delete_forever,
-                              color: Colors.red,
-                            ),
-                            title: const Center(
-                              child: Text(
-                                "Poista tili pysyvästi",
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      Center(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.delete_forever,
+                            color: Colors.red,
+                          ),
+                          title: const Center(
+                            child: Text(
+                              "Poista tili pysyvästi",
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            onTap: _deleteAccount,
                           ),
+                          onTap: _deleteAccount,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
