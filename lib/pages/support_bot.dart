@@ -140,7 +140,7 @@ class SupportBot {
     if (_any(text, ["moi", "hei", "moikka"])) {
       return _oneOf([
         "Hei! Miten voin auttaa?",
-        "Moi! Kysy vapaastiesim. unesta tai liikunnasta.",
+        "Moi! Kysy vapaasti esim. unesta tai liikunnasta.",
         "Terve! Miten menee?",
       ]);
     }

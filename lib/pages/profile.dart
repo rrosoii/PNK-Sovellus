@@ -122,11 +122,11 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
     return "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}";
   }
 
-  Future<void> _pickAvatar() async {
+  Future<void> _pickAvatar(ImageSource source) async {
     final picker = ImagePicker();
 
     final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       maxWidth: 600,
     );
 
@@ -136,6 +136,39 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
       await _dataService.saveAvatarPath(pickedFile.path);
 
       setState(() {});
+    }
+  }
+
+  Future<void> _showAvatarPickerOptions() async {
+    final selectedSource = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text("Take photo"),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text("Choose from gallery"),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedSource != null) {
+      await _pickAvatar(selectedSource);
     }
   }
 
@@ -298,7 +331,7 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
 
                   // CAMERA ICON overlay
                   GestureDetector(
-                    onTap: _pickAvatar,
+                    onTap: _showAvatarPickerOptions,
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 4, right: 4),
                       padding: const EdgeInsets.all(6),

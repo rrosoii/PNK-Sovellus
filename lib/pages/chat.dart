@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'support_bot.dart';
 
+// Simple in-memory store so chat history survives tab changes.
+class _ChatStore {
+  final List<Map<String, String>> messages = [];
+}
+
+final _chatStore = _ChatStore();
+
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
 
@@ -14,24 +21,40 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  final List<Map<String, String>> messages = [];
+  List<Map<String, String>> get messages => _chatStore.messages;
+
+  bool _botTyping = false;
 
   void sendMessage() {
     String text = _controller.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
-      messages.add({"sender": "user", "text": text});
+      messages.add({
+        "sender": "user",
+        "text": text,
+        "time": DateTime.now().toIso8601String(),
+      });
+
+      _botTyping = true;
     });
+
     _scrollToBottom();
 
     _controller.clear();
 
-    Future.delayed(const Duration(milliseconds: 450), () {
+    Future.delayed(const Duration(milliseconds: 900), () {
       String reply = _bot.getReply(text);
+
       setState(() {
-        messages.add({"sender": "bot", "text": reply});
+        _botTyping = false;
+        messages.add({
+          "sender": "bot",
+          "text": reply,
+          "time": DateTime.now().toIso8601String(),
+        });
       });
+
       _scrollToBottom();
     });
   }
@@ -45,6 +68,34 @@ class _ChatPageState extends State<ChatPage> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  Widget _buildTypingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 80),
+        margin: const EdgeInsets.only(top: 6, bottom: 6, left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(6),
+          ),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 10,
+              color: Colors.black.withOpacity(0.08),
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const TypingDots(),
+      ),
+    );
   }
 
   @override
@@ -90,12 +141,7 @@ class _ChatPageState extends State<ChatPage> {
         child: const SafeArea(
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child:
-                    Icon(Icons.tag_faces, color: Color(0xFF2E5AAC), size: 26),
-              ),
+              const PulsingAvatar(),
               SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,47 +182,77 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       controller: _scrollController,
       reverse: true,
-      itemCount: messages.length,
+      itemCount: messages.length + (_botTyping ? 1 : 0),
       itemBuilder: (context, index) {
-        final msg = messages[messages.length - 1 - index];
+        // typing indicator visit
+        if (_botTyping && index == 0) {
+          return _buildTypingBubble();
+        }
+
+        final adjustedIndex = _botTyping ? index - 1 : index;
+        final msg = messages[messages.length - 1 - adjustedIndex];
+
         final bool isUser = msg["sender"] == "user";
         final Color bubbleColor =
             isUser ? const Color(0xFF2E5AAC) : Colors.white;
 
-        return Align(
-          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 280),
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: Radius.circular(isUser ? 18 : 4),
-                bottomRight: Radius.circular(isUser ? 4 : 18),
-              ),
-              boxShadow: isUser
-                  ? []
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+        return AnimatedOpacity(
+            opacity: 1,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: Align(
+              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: isUser
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: bubbleColor,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(18),
+                          topRight: const Radius.circular(18),
+                          bottomLeft: Radius.circular(isUser ? 18 : 4),
+                          bottomRight: Radius.circular(isUser ? 4 : 18),
+                        ),
+                        boxShadow: isUser
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                       ),
-                    ],
-            ),
-            child: Text(
-              msg["text"] ?? "",
-              style: TextStyle(
-                color: isUser ? Colors.white : Colors.black87,
-                fontSize: 15,
-                height: 1.3,
+                      child: Text(
+                        msg["text"] ?? "",
+                        style: TextStyle(
+                          color: isUser ? Colors.white : Colors.black87,
+                          fontSize: 15,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _formatTime(
+                          msg["time"] ?? DateTime.now().toIso8601String()),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        );
+            ));
       },
     );
   }
@@ -243,5 +319,125 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildBottomNav() {
     return const AppBottomNav(currentIndex: 2);
+  }
+}
+
+String _formatTime(String iso) {
+  final dt = DateTime.parse(iso);
+  String h = dt.hour.toString().padLeft(2, '0');
+  String m = dt.minute.toString().padLeft(2, '0');
+  return "$h:$m";
+}
+
+class TypingDots extends StatefulWidget {
+  const TypingDots({super.key});
+
+  @override
+  State<TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _dot(int index) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final phase = (_controller.value * 3) - index;
+        final double bounce =
+            (phase < 0 || phase > 1) ? 0 : (1 - (phase - 0.5).abs() * 2);
+
+        return Transform.translate(
+          offset: Offset(0, -6 * bounce),
+          child: Opacity(
+            opacity: 0.4 + (bounce * 0.6),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 8,
+              width: 8,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E5AAC),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 26,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _dot(0),
+          _dot(1),
+          _dot(2),
+        ],
+      ),
+    );
+  }
+}
+
+class PulsingAvatar extends StatefulWidget {
+  const PulsingAvatar({super.key});
+
+  @override
+  State<PulsingAvatar> createState() => _PulsingAvatarState();
+}
+
+class _PulsingAvatarState extends State<PulsingAvatar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, child) {
+        return Transform.scale(
+          scale: 1 + (_controller.value * 0.04),
+          child: child,
+        );
+      },
+      child: const CircleAvatar(
+        backgroundColor: Colors.white,
+        child: Icon(Icons.tag_faces, color: Color(0xFF2E5AAC)),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

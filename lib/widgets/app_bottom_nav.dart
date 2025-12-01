@@ -10,7 +10,10 @@ class AppBottomNav extends StatelessWidget {
   void _navigate(BuildContext context, int index) {
     if (index == currentIndex) return;
     if (index < 0 || index >= _routes.length) return;
-    Navigator.pushReplacementNamed(context, _routes[index]);
+
+    // Use the root navigator to reach the app-level named routes even from nested navigators.
+    Navigator.of(context, rootNavigator: true)
+        .pushReplacementNamed(_routes[index]);
   }
 
   @override

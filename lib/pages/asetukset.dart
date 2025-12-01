@@ -403,7 +403,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                       _buildRow("Ehdot", Icons.chevron_right),
                       _buildRow("Personalisointi", Icons.chevron_right),
                       const SizedBox(height: 35),
-
                       Center(
                         child: ListTile(
                           leading: const Icon(
@@ -422,7 +421,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                           onTap: _logout,
                         ),
                       ),
-
                       Center(
                         child: ListTile(
                           leading: const Icon(
@@ -449,7 +447,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }
