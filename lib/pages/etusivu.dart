@@ -6,6 +6,7 @@ import 'package:pnksovellus/main.dart';
 import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/chat.dart';
 import 'package:pnksovellus/pages/article_page.dart';
+import 'package:pnksovellus/pages/profile.dart';
 import 'omaterveys.dart';
 import 'package:pnksovellus/pages/challenge_page.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
@@ -153,8 +154,8 @@ class _EtusivuState extends State<Etusivu> {
               onHorizontalDragEnd: _handleHorizontalSwipe,
               child: SafeArea(
                 child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
@@ -522,6 +523,7 @@ class _EtusivuState extends State<Etusivu> {
                 },
               ),
             ),
+          ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }

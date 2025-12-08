@@ -38,7 +38,7 @@ class AjankohtaistaDetailPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 14,
                       offset: const Offset(0, 8),
                     ),
@@ -91,8 +91,9 @@ class _HeroImage extends StatelessWidget {
       child: Container(
         height: 220,
         width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(18)),
+          gradient: LinearGradient(
             colors: [Color(0xFF2E5AAC), Color(0xFF6CA7FF)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

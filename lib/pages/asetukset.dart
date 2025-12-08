@@ -261,9 +261,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
 
-    final prefs = await SharedPreferences.getInstance();
-    // you might want to clear some local settings here later with prefs
-
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,

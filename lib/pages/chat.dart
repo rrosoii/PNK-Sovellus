@@ -79,7 +79,7 @@ class _ChatPageState extends State<ChatPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomRight: Radius.circular(18),
@@ -88,7 +88,7 @@ class _ChatPageState extends State<ChatPage> {
           boxShadow: [
             BoxShadow(
               blurRadius: 10,
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               offset: const Offset(0, 4),
             ),
           ],
@@ -141,7 +141,7 @@ class _ChatPageState extends State<ChatPage> {
         child: const SafeArea(
           child: Row(
             children: [
-              const PulsingAvatar(),
+              PulsingAvatar(),
               SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +244,7 @@ class _ChatPageState extends State<ChatPage> {
                     Text(
                       _formatTime(
                           msg["time"] ?? DateTime.now().toIso8601String()),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
                         color: Colors.black54,
                       ),
@@ -367,15 +367,15 @@ class _TypingDotsState extends State<TypingDots>
           offset: Offset(0, -6 * bounce),
           child: Opacity(
             opacity: 0.4 + (bounce * 0.6),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 8,
-              width: 8,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E5AAC),
-                shape: BoxShape.circle,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2E5AAC),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
           ),
         );
       },
