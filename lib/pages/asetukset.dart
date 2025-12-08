@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:pnksovellus/pages/luo_tili.dart';
+import 'package:pnksovellus/pages/tietoa.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pnksovellus/pages/home.dart';
@@ -57,7 +58,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     setState(() {
       _isLoggedIn = FirebaseAuth.instance.currentUser != null;
     });
-    // Refresh when coming back from another page (e.g., Profile)
     _loadAvatarPath();
     _loadUsername();
   }
@@ -76,29 +76,81 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   void _editUsername() {
     final controller = TextEditingController(text: _username);
 
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: const Color(0xFFEFF4FF),
+      labelText: "Nimi",
+      labelStyle: const TextStyle(color: Color(0xFF2E5AAC)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: Color(0xFF2E5AAC),
+          width: 1.2,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    );
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Muokkaa nimeä"),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Syötä uusi nimi"),
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Muokkaa nimeä",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF224D9C),
+          ),
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Tämä nimi näkyy sovelluksessa profiilissasi.",
+              style:
+                  TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              decoration: inputDecoration,
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Peruuta"),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text(
+              "Peruuta",
+              style: TextStyle(color: Color(0xFF2E5AAC)),
+            ),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF224D9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             onPressed: () {
               final newName = controller.text.trim();
               if (newName.isNotEmpty) {
                 setState(() => _username = newName);
                 _saveUsername(newName);
               }
-              Navigator.of(context).pop();
+              Navigator.of(dialogCtx).pop();
             },
-            child: const Text("Tallenna"),
+            child: const Text(
+              "Tallenna",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -132,27 +184,60 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   void _showImagePickerDialog() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      backgroundColor: Colors.white,
       builder: (_) {
         return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Valitse galleriasta'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickAvatar(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Ota kuva'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickAvatar(ImageSource.camera);
-                },
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text(
+                      "Vaihda profiilikuva",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading:
+                      const Icon(Icons.photo_library, color: Color(0xFF2E5AAC)),
+                  title: const Text("Valitse galleriasta"),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickAvatar(ImageSource.gallery);
+                  },
+                ),
+                ListTile(
+                  leading:
+                      const Icon(Icons.camera_alt, color: Color(0xFF2E5AAC)),
+                  title: const Text("Ota kuva"),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickAvatar(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
           ),
         );
       },
@@ -177,8 +262,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     await FirebaseAuth.instance.signOut();
 
     final prefs = await SharedPreferences.getInstance();
-    prefs.remove('username');
-    prefs.remove('avatar_path');
+    // you might want to clear some local settings here later with prefs
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -196,21 +280,43 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
 
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Poista tili"),
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Poista tili",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFB3261E),
+          ),
+        ),
         content: const Text(
           "Haluatko varmasti poistaa tilisi pysyvästi? Tätä ei voi perua.",
+          style: TextStyle(height: 1.4),
         ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         actions: [
           TextButton(
-            child: const Text("Peruuta"),
-            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Peruuta",
+              style: TextStyle(color: Color(0xFF2E5AAC)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx),
           ),
           ElevatedButton(
-            child: const Text("Poista"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFB3261E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Poista",
+              style: TextStyle(color: Colors.white),
+            ),
             onPressed: () {
               confirm = true;
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
             },
           ),
         ],
@@ -241,7 +347,169 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     );
   }
 
-  Widget _buildRow(String text, IconData icon) {
+  Future<void> _showChangePasswordDialog() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Kirjaudu sisään vaihtaaksesi salasanan."),
+        ),
+      );
+      return;
+    }
+
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: const Color(0xFFEFF4FF),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: Color(0xFF2E5AAC),
+          width: 1.2,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      labelStyle: const TextStyle(color: Color(0xFF2E5AAC)),
+    );
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Vaihda salasana",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF224D9C),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Varmistamme ensin nykyisen salasanasi ja vaihdamme sen uuteen.",
+                style: TextStyle(color: Colors.black87, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: currentController,
+                obscureText: true,
+                decoration:
+                    inputDecoration.copyWith(labelText: "Nykyinen salasana"),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: newController,
+                obscureText: true,
+                decoration:
+                    inputDecoration.copyWith(labelText: "Uusi salasana"),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                decoration: inputDecoration.copyWith(
+                  labelText: "Vahvista uusi salasana",
+                ),
+              ),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              "Peruuta",
+              style: TextStyle(color: Color(0xFF2E5AAC)),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF224D9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              "Tallenna",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (submitted != true) return;
+
+    final current = currentController.text.trim();
+    final next = newController.text.trim();
+    final confirm = confirmController.text.trim();
+
+    if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Täytä kaikki kentät.")),
+      );
+      return;
+    }
+    if (next != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Uudet salasanat eivät täsmää.")),
+      );
+      return;
+    }
+    if (next.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Salasanan tulee olla vähintään 6 merkkiä."),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: current,
+      );
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(next);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Salasana vaihdettu.")),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Salasanan vaihto epäonnistui.";
+      if (e.code == "wrong-password") {
+        message = "Nykyinen salasana on virheellinen.";
+      } else if (e.code == "weak-password") {
+        message = "Uusi salasana on liian heikko.";
+      } else if (e.code == "requires-recent-login") {
+        message = "Kirjaudu uudelleen ja yritä sitten uudestaan.";
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Salasanan vaihto epäonnistui.")),
+      );
+    }
+  }
+
+  Widget _buildRow(String text, IconData icon, {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, left: 7, bottom: 5),
       child: Container(
@@ -259,7 +527,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           trailing: Icon(icon, size: 18, color: Colors.black54),
-          onTap: () {},
+          onTap: onTap,
         ),
       ),
     );
@@ -393,17 +661,30 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                         ],
                       ),
                       SizedBox(height: 20),
-                      _buildRow("Muokkaa profiilia", Icons.chevron_right),
                       if (_isLoggedIn)
-                        _buildRow("Vaihda salasana", Icons.chevron_right),
+                        _buildRow(
+                          "Vaihda salasana",
+                          Icons.chevron_right,
+                          onTap: _showChangePasswordDialog,
+                        ),
                       _buildSwitchRow("Ilmoitukset"),
                       SizedBox(height: 20),
-                      _buildRow("Tietoa meistä", Icons.chevron_right),
+                      _buildRow(
+                        "Tietoa meistä",
+                        Icons.chevron_right,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AboutUsPage(),
+                            ),
+                          );
+                        },
+                      ),
                       _buildRow("Tietosuojakäytäntä", Icons.chevron_right),
                       _buildRow("Ehdot", Icons.chevron_right),
                       _buildRow("Personalisointi", Icons.chevron_right),
                       const SizedBox(height: 35),
-
                       if (_isLoggedIn) ...[
                         Center(
                           child: ListTile(
@@ -423,7 +704,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                             onTap: _logout,
                           ),
                         ),
-
                         Center(
                           child: ListTile(
                             leading: const Icon(
