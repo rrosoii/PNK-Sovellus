@@ -577,7 +577,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                 children: [
                   const SizedBox(width: 16),
                   GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => Navigator.of(context).maybePop(),
                     child: const Icon(
                       Icons.arrow_back_ios,
                       color: Colors.white,

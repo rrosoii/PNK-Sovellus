@@ -109,7 +109,7 @@ class _ChallengePageState extends State<ChallengePage> {
   Future<void> cancelChallenge() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      Navigator.pop(context);
+      Navigator.of(context).maybePop();
       return;
     }
     await FirebaseFirestore.instance.collection("users").doc(user.uid).set({

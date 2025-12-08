@@ -11,7 +11,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
@@ -278,94 +277,7 @@ class _TrackerPageState extends State<TrackerPage> {
   // ========================= NOTIFICATIONS + SETTINGS =========================
 
   Widget _buildTopButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.notifications,
-                    color: Colors.blue,
-                    size: 25,
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Ilmoitukset avattu")),
-                    );
-                  },
-                ),
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton<int>(
-              icon: const Icon(Icons.settings, color: Colors.blue, size: 25),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: Colors.white,
-              offset: const Offset(0, 40),
-              onSelected: (value) {
-                if (value == 2) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AsetuksetPage(),
-                    ),
-                  );
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 1,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_outline, color: Color(0xFF485885)),
-                      SizedBox(width: 10),
-                      Text(
-                        "Profiili",
-                        style: TextStyle(color: Color(0xFF485885)),
-                      ),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 2,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.settings_outlined, color: Color(0xFF485885)),
-                      SizedBox(width: 10),
-                      Text(
-                        "Asetukset",
-                        style: TextStyle(color: Color(0xFF485885)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   // ========================= DATA SAVE/LOAD =========================
@@ -393,41 +305,22 @@ class _TrackerPageState extends State<TrackerPage> {
           .collection('health');
 
   Future<void> _loadMoodData() async {
-    if (!isLoggedIn) {
-      final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
-      if (saved == null || saved.isEmpty) {
-        setState(() => moodMap = {});
-        return;
-      }
-
-      final pairs = saved.split(",");
-      final mm = <int, int>{};
-      for (var p in pairs) {
-        if (p.contains(":")) {
-          final s = p.split(":");
-          mm[int.parse(s[0])] = int.parse(s[1]);
-        }
-      }
-
-      setState(() => moodMap = mm);
+    final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
+    if (saved == null || saved.isEmpty) {
+      setState(() => moodMap = {});
       return;
     }
 
-    try {
-      final docId = "moods_${_monthId(currentMonth)}";
-      final doc = await _userHealthColl!.doc(docId).get();
-      final data = doc.data();
-      final mm = <int, int>{};
-      if (data != null && data['map'] is Map) {
-        (data['map'] as Map).forEach((k, v) {
-          mm[int.parse(k.toString())] = int.parse(v.toString());
-        });
+    final pairs = saved.split(",");
+    final mm = <int, int>{};
+    for (var p in pairs) {
+      if (p.contains(":")) {
+        final s = p.split(":");
+        mm[int.parse(s[0])] = int.parse(s[1]);
       }
-      setState(() => moodMap = mm);
-    } catch (e) {
-      debugPrint("Failed to load moods from Firestore: $e");
-      setState(() => moodMap = {});
     }
+
+    setState(() => moodMap = mm);
   }
 
   Future<void> _saveMoodData() async {
@@ -545,160 +438,163 @@ class _TrackerPageState extends State<TrackerPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            Column(
-              children: [
-                _buildTopPart(today),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // ===================== CALENDAR =====================
-                      Positioned.fill(
-                        child: SingleChildScrollView(
-                          physics: const NeverScrollableScrollPhysics(),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 10),
-                              _buildCalendarCard(),
-                              const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.only(top: 32),
+              child: Column(
+                children: [
+                  _buildTopPart(today),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        // ===================== CALENDAR =====================
+                        Positioned.fill(
+                          child: SingleChildScrollView(
+                            physics: const NeverScrollableScrollPhysics(),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                _buildCalendarCard(),
+                                const SizedBox(height: 20),
 
-                              // ------- TOGGLE BUTTON -------
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    showExercises = true;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        blurRadius: 12,
-                                        color: Colors.black.withOpacity(0.08),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Text(
-                                        "Näytä liikuntasuoritukset",
-                                        style: TextStyle(
-                                          color: Color(0xFF233A72),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Icon(Icons.keyboard_arrow_up,
-                                          color: Color(0xFF233A72)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 120),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ===================== EXERCISE CARD POPUP =====================
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 350),
-                        curve: Curves.easeOutCubic,
-
-                        // if visible → slide up over calendar
-                        // if hidden → slide fully offscreen bottom
-                        bottom: showExercises ? 0 : -500,
-                        left: 0,
-                        right: 0,
-
-                        child: Container(
-                          padding: const EdgeInsets.only(top: 12),
-                          decoration: const BoxDecoration(
-                            color: Colors.transparent,
-                          ),
-                          child: Column(
-                            children: [
-                              // ---- DRAG HANDLE / HIDE BUTTON ----
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    showExercises = false;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        blurRadius: 12,
-                                        color: Colors.black.withOpacity(0.08),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Text(
-                                        "Piilota",
-                                        style: TextStyle(
-                                          color: Color(0xFF233A72),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Icon(Icons.keyboard_arrow_down,
-                                          color: Color(0xFF233A72)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              // ---- EXERCISE CARD ITSELF ----
-                              Container(
-                                height: 350,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                padding: const EdgeInsets.all(18),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(22),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      blurRadius: 12,
-                                      color: Colors.black.withOpacity(0.08),
+                                // ------- TOGGLE BUTTON -------
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      showExercises = true;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
                                     ),
-                                  ],
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(18),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          blurRadius: 12,
+                                          color: Colors.black.withOpacity(0.08),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Text(
+                                          "Näytä liikuntasuoritukset",
+                                          style: TextStyle(
+                                            color: Color(0xFF233A72),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Icon(Icons.keyboard_arrow_up,
+                                            color: Color(0xFF233A72)),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                child: ListView(
-                                  controller: _exerciseCardScroll,
-                                  padding: EdgeInsets.zero,
-                                  children: [
-                                    _buildExerciseCard(),
-                                  ],
-                                ),
-                              ),
-                            ],
+
+                                const SizedBox(height: 120),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
+
+                        // ===================== EXERCISE CARD POPUP =====================
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 350),
+                          curve: Curves.easeOutCubic,
+
+                          // if visible → slide up over calendar
+                          // if hidden → slide fully offscreen bottom
+                          bottom: showExercises ? 0 : -500,
+                          left: 0,
+                          right: 0,
+
+                          child: Container(
+                            padding: const EdgeInsets.only(top: 12),
+                            decoration: const BoxDecoration(
+                              color: Colors.transparent,
+                            ),
+                            child: Column(
+                              children: [
+                                // ---- DRAG HANDLE / HIDE BUTTON ----
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      showExercises = false;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(18),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          blurRadius: 12,
+                                          color: Colors.black.withOpacity(0.08),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Text(
+                                          "Piilota",
+                                          style: TextStyle(
+                                            color: Color(0xFF233A72),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Icon(Icons.keyboard_arrow_down,
+                                            color: Color(0xFF233A72)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 10),
+
+                                // ---- EXERCISE CARD ITSELF ----
+                                Container(
+                                  height: 350,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(22),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        blurRadius: 12,
+                                        color: Colors.black.withOpacity(0.08),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ListView(
+                                    controller: _exerciseCardScroll,
+                                    padding: EdgeInsets.zero,
+                                    children: [
+                                      _buildExerciseCard(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
             ),
             _decorBalls(),
           ],
@@ -713,8 +609,6 @@ class _TrackerPageState extends State<TrackerPage> {
   Widget _buildTopPart(DateTime today) {
     return Column(
       children: [
-        const SizedBox(height: 10),
-        _buildTopButtons(),
         const SizedBox(height: 10),
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 4),

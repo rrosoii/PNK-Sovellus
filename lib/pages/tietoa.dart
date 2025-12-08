@@ -92,7 +92,7 @@ class AboutUsPage extends StatelessWidget {
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => Navigator.of(context).maybePop(),
                       child: const Icon(
                         Icons.arrow_back_ios,
                         color: Colors.white,
