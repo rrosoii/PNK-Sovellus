@@ -16,6 +16,8 @@ import 'package:pnksovellus/pages/ajankohtaista_detail.dart';
 import 'package:pnksovellus/pages/article_service.dart';
 import 'package:pnksovellus/pages/article_model.dart';
 import 'package:pnksovellus/pages/article_view.dart';
+import 'package:pnksovellus/services/achievement_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ArticlesListPage extends StatelessWidget {
   const ArticlesListPage({super.key});
@@ -40,16 +42,19 @@ class _EtusivuState extends State<Etusivu> {
   String? userProfile;
   bool loadingProfile = true;
   bool loadingArticles = false;
+  bool loadingAchievements = false;
   final UserDataService _dataService = UserDataService();
   final PageController _articleController =
       PageController(viewportFraction: 0.9);
   final EventService _eventService = EventService();
   final AjankohtaistaService _ajankohtaistaService = AjankohtaistaService();
   final ArticleService _articleService = ArticleService();
+  final AchievementService _achievementService = AchievementService();
   final TextEditingController _searchController = TextEditingController();
   List<AjankohtaistaItem> _ajankohtaista = [];
   List<Article> _allArticles = [];
   List<Article> _searchResults = [];
+  Map<String, String> _achievements = {};
   int _currentArticleIndex = 0;
   Timer? _articleTimer;
   Timer? _searchDebounce;
@@ -64,6 +69,7 @@ class _EtusivuState extends State<Etusivu> {
     super.initState();
     _loadProfile();
     _loadArticles();
+    _loadAchievements();
     _startArticleAutoScroll();
   }
 
@@ -102,6 +108,24 @@ class _EtusivuState extends State<Etusivu> {
     }
   }
 
+  Future<void> _loadAchievements() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _achievements = {});
+      return;
+    }
+    setState(() => loadingAchievements = true);
+    try {
+      final map = await _achievementService.loadAchievements();
+      setState(() {
+        _achievements = map;
+        loadingAchievements = false;
+      });
+    } catch (_) {
+      setState(() => loadingAchievements = false);
+    }
+  }
+
   void _startArticleAutoScroll() {
     _articleTimer?.cancel();
     _articleTimer = Timer.periodic(const Duration(seconds: 7), (_) {
@@ -124,8 +148,11 @@ class _EtusivuState extends State<Etusivu> {
       backgroundColor: const Color(0xFFEFF4FF),
       body: loadingProfile
           ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: LayoutBuilder(
+          : GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragEnd: _handleHorizontalSwipe,
+              child: SafeArea(
+                child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
@@ -136,8 +163,7 @@ class _EtusivuState extends State<Etusivu> {
                       child: Stack(
                         children: [
                           Positioned(
-                            top:
-                                440, // slightly higher than before so it peeks less
+                            top: 480,
                             left: -300,
                             child: Container(
                               width: 1000,
@@ -236,27 +262,44 @@ class _EtusivuState extends State<Etusivu> {
 
                                 // Events + Ajankohtaista PageView
                                 SizedBox(
-                                  height: 230,
+                                  height: 255,
                                   child: StreamBuilder<List<AjankohtaistaItem>>(
                                     stream: _ajankohtaistaService.latest(),
                                     builder: (context, snapshot) {
                                       if (snapshot.hasData) {
                                         _ajankohtaista = snapshot.data!;
                                       }
-                                      return PageView.builder(
-                                        controller: _articleController,
-                                        itemCount: _pageCount,
-                                        onPageChanged: (index) {
-                                          _currentArticleIndex = index;
-                                        },
-                                        itemBuilder: (context, index) {
-                                          if (index == 0) {
-                                            return _buildEventsSlide();
-                                          }
-                                          final item =
-                                              _ajankohtaista[index - 1];
-                                          return _buildAjankohtaistaCard(item);
-                                        },
+                                      return Column(
+                                        children: [
+                                          Expanded(
+                                            child: PageView.builder(
+                                              controller: _articleController,
+                                              itemCount: _pageCount,
+                                              onPageChanged: (index) {
+                                                setState(() {
+                                                  _currentArticleIndex = index;
+                                                });
+                                              },
+                                              itemBuilder: (context, index) {
+                                                if (index == 0) {
+                                                  return _buildEventsSlide();
+                                                }
+                                                final item =
+                                                    _ajankohtaista[index - 1];
+                                                return _buildAjankohtaistaCard(
+                                                  item,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          if (_pageCount > 1)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 8,
+                                              ),
+                                              child: _buildDots(),
+                                            ),
+                                        ],
                                       );
                                     },
                                   ),
@@ -290,23 +333,7 @@ class _EtusivuState extends State<Etusivu> {
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
-                                  children: const [
-                                    Icon(
-                                      Icons.local_fire_department,
-                                      color: Colors.deepOrange,
-                                      size: 40,
-                                    ),
-                                    Icon(
-                                      Icons.bolt,
-                                      color: Colors.green,
-                                      size: 40,
-                                    ),
-                                    Icon(
-                                      Icons.water_drop,
-                                      color: Colors.blue,
-                                      size: 40,
-                                    ),
-                                  ],
+                                  children: _buildAchievementsRow(),
                                 ),
 
                                 const SizedBox(height: 30),
@@ -931,8 +958,8 @@ class _EtusivuState extends State<Etusivu> {
         '${item.date.day.toString().padLeft(2, '0')}.${item.date.month.toString().padLeft(2, '0')}.${item.date.year}';
     final preview = (() {
       final raw = (item.body ?? '').replaceAll('\n', ' ').trim();
-      if (raw.length <= 110) return raw;
-      return '${raw.substring(0, 110)}…';
+      if (raw.length <= 60) return raw;
+      return '${raw.substring(0, 60)}…';
     })();
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -958,7 +985,7 @@ class _EtusivuState extends State<Etusivu> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    height: 105,
+                    height: 100,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
@@ -980,9 +1007,10 @@ class _EtusivuState extends State<Etusivu> {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             item.title,
@@ -1042,6 +1070,110 @@ class _EtusivuState extends State<Etusivu> {
       'jou'
     ];
     return months[date.month - 1];
+  }
+
+  List<Widget> _buildAchievementsRow() {
+    if (loadingAchievements) {
+      return const [
+        SizedBox(
+          height: 40,
+          width: 40,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        SizedBox(width: 10),
+        SizedBox(
+          height: 40,
+          width: 40,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        SizedBox(width: 10),
+        SizedBox(
+          height: 40,
+          width: 40,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ];
+    }
+
+    final entries = _achievements.entries.take(3).toList();
+    if (entries.isEmpty) {
+      return const [
+        Icon(Icons.emoji_events_outlined, color: Colors.grey, size: 40),
+        Icon(Icons.emoji_events_outlined, color: Colors.grey, size: 40),
+        Icon(Icons.emoji_events_outlined, color: Colors.grey, size: 40),
+      ];
+    }
+
+    return entries
+        .map(
+          (e) => Column(
+            children: [
+              const Icon(Icons.emoji_events, color: Color(0xFF2E5AAC), size: 40),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: 90,
+                child: Text(
+                  e.value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF485885),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )
+        .toList();
+  }
+
+  Widget _buildDots() {
+    final dots = List.generate(_pageCount, (i) {
+      final isActive = i == _currentArticleIndex;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.symmetric(horizontal: 5),
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF1C2D50) : const Color(0xFF9EABC2),
+          shape: BoxShape.circle,
+        ),
+      );
+    });
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF4FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: dots,
+      ),
+    );
+  }
+
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    const threshold = 400;
+    if (velocity < -threshold) {
+      _navigateTo(const TrackerPage());
+    } else if (velocity > threshold) {
+      _navigateTo(const ProfilePage());
+    }
+  }
+
+  void _navigateTo(Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
   }
 
   void _onSearchChanged(String query) {
