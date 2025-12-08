@@ -52,6 +52,7 @@ class _EtusivuState extends State<Etusivu> {
   final ArticleService _articleService = ArticleService();
   final AchievementService _achievementService = AchievementService();
   final TextEditingController _searchController = TextEditingController();
+  final LayerLink _searchFieldLink = LayerLink();
   List<AjankohtaistaItem> _ajankohtaista = [];
   List<Article> _allArticles = [];
   List<Article> _searchResults = [];
@@ -155,31 +156,39 @@ class _EtusivuState extends State<Etusivu> {
               child: SafeArea(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
+                    final overlayWidth = constraints.maxWidth - 32;
                     return SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         minHeight: constraints.maxHeight,
                       ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 480,
-                            left: -300,
-                            child: Container(
-                              width: 1000,
-                              height: 1000,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              top: 480,
+                              left: -300,
+                              child: Container(
+                                width: 1000,
+                                height: 1000,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color.fromRGBO(46, 90, 172, 0.15),
+                                      blurRadius: 80,
+                                      spreadRadius: 30,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                 // Notifications & Settings
                                 Align(
                                   alignment: Alignment.topRight,
@@ -194,60 +203,74 @@ class _EtusivuState extends State<Etusivu> {
                                       _buildIconButton(
                                         Icons.settings,
                                         'Asetukset',
-                                      ),
-                                    ],
+                            ),
+                            if (_searchResults.isNotEmpty)
+                              CompositedTransformFollower(
+                                link: _searchFieldLink,
+                                showWhenUnlinked: false,
+                                offset: const Offset(0, 56),
+                                child: SizedBox(
+                                  width: overlayWidth,
+                                  child: Material(
+                                    elevation: 8,
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: _buildSearchResults(),
                                   ),
                                 ),
+                              ),
+                          ],
+                        ),
+                      ),
 
                                 const SizedBox(height: 20),
 
                                 // Search bar
-                                TextField(
-                                  controller: _searchController,
-                                  onChanged: _onSearchChanged,
-                                  decoration: InputDecoration(
-                                    hintText: 'Hae artikkeleja',
-                                    prefixIcon: const Icon(Icons.search),
-                                    suffixIcon:
-                                        _searchController.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.close),
-                                                onPressed: () {
-                                                  _searchController.clear();
-                                                  _onSearchChanged('');
-                                                },
-                                              )
-                                            : null,
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                      borderSide: BorderSide.none,
+                                CompositedTransformTarget(
+                                  link: _searchFieldLink,
+                                  child: TextField(
+                                    controller: _searchController,
+                                    onChanged: _onSearchChanged,
+                                    decoration: InputDecoration(
+                                      hintText: 'Hae artikkeleja',
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon:
+                                          _searchController.text.isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.close),
+                                                  onPressed: () {
+                                                    _searchController.clear();
+                                                    _onSearchChanged('');
+                                                  },
+                                                )
+                                              : null,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(30),
+                                        borderSide: BorderSide.none,
+                                      ),
                                     ),
                                   ),
                                 ),
 
                                 const SizedBox(height: 20),
 
-                                if (loadingArticles)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 8.0),
-                                    child: LinearProgressIndicator(
-                                      minHeight: 3,
-                                      color: Color(0xFF2E5AAC),
-                                      backgroundColor:
-                                          Color.fromRGBO(46, 90, 172, 0.15),
+                                  if (loadingArticles)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 8.0),
+                                      child: LinearProgressIndicator(
+                                        minHeight: 3,
+                                        color: Color(0xFF2E5AAC),
+                                        backgroundColor:
+                                            Color.fromRGBO(46, 90, 172, 0.15),
+                                      ),
                                     ),
-                                  ),
-                                if (_searchResults.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        top: 12, bottom: 8),
-                                    child: _buildSearchResults(),
-                                  ),
 
                                 // Welcome text
                                 const Text(
@@ -313,8 +336,8 @@ class _EtusivuState extends State<Etusivu> {
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
                                       colors: [
-                                        Color(0xFF485885),
-                                        Color(0xFF2196F3),
+                                        Color.fromRGBO(72, 150, 195, 1),
+                                        Color.fromRGBO(126, 197, 239, 1),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
@@ -322,7 +345,7 @@ class _EtusivuState extends State<Etusivu> {
                                     child: const Text(
                                       'Saavutukset',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
@@ -340,11 +363,23 @@ class _EtusivuState extends State<Etusivu> {
                                 const SizedBox(height: 30),
 
                                 // Challenges title
-                                const Text(
-                                  'Sinulle suositellut haasteet',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      const LinearGradient(
+                                    colors: [
+                                      Color.fromRGBO(67, 117, 184, 1),
+                                      Color.fromRGBO(97, 133, 197, 1),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ).createShader(bounds),
+                                  child: const Text(
+                                    'Sinulle suositellut haasteet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -396,8 +431,8 @@ class _EtusivuState extends State<Etusivu> {
                                         shaderCallback: (bounds) =>
                                             const LinearGradient(
                                           colors: [
-                                            Color.fromRGBO(13, 59, 118, 1),
-                                            Color.fromRGBO(97, 150, 239, 1),
+                                            Color.fromRGBO(67, 117, 184, 1),
+                                            Color.fromRGBO(97, 133, 197, 1),
                                           ],
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
@@ -745,7 +780,7 @@ class _EtusivuState extends State<Etusivu> {
   Widget _buildIconButton(IconData icon, String tooltip) {
     if (icon == Icons.settings) {
       return IconButton(
-        icon: const Icon(Icons.settings, color: Colors.blue, size: 25),
+        icon: const Icon(Icons.settings, color: Color.fromARGB(255, 71, 147, 210), size: 25),
         tooltip: 'Asetukset',
         onPressed: () {
           Navigator.push(
@@ -762,7 +797,7 @@ class _EtusivuState extends State<Etusivu> {
       ];
 
       return PopupMenuButton<int>(
-        icon: const Icon(Icons.notifications, color: Colors.blue, size: 25),
+        icon: const Icon(Icons.notifications, color: Color.fromARGB(255, 71, 147, 210), size: 25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
         offset: const Offset(0, 40),

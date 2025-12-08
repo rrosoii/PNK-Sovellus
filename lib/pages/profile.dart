@@ -318,29 +318,23 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
           ),
         ),
 
-        // Back + Title
-        // Back button + title
+        // Title (no back arrow on profile tab)
         Positioned(
           top: 16,
           left: 16,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              children: const [
-                Icon(Icons.arrow_back_ios, color: Colors.white, size: 22),
-                SizedBox(width: 6),
-                Icon(Icons.person, color: Colors.white, size: 26),
-                SizedBox(width: 8),
-                Text(
-                  "Profiili",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+          child: Row(
+            children: const [
+              Icon(Icons.person, color: Colors.white, size: 26),
+              SizedBox(width: 8),
+              Text(
+                "Profiili",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
 
