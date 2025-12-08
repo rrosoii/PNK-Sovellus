@@ -10,6 +10,7 @@ import 'package:pnksovellus/routes/route_observer.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/pages/kysely.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
+import 'package:pnksovellus/pages/all_challenges.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,6 +28,7 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
 
   List<Map<String, dynamic>> activeChallenges = [];
   List<Map<String, dynamic>> completedChallenges = [];
+  List<Map<String, dynamic>> allChallenges = [];
   bool loadingChallenges = true;
   final Map<String, Map<String, dynamic>> _challengeMeta = {
     "steps_10000_week": {
@@ -179,6 +181,7 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
         loadingChallenges = false;
         activeChallenges = [];
         completedChallenges = [];
+        allChallenges = _defaultChallengeList();
       });
       return;
     }
@@ -192,6 +195,17 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
       final data = doc.data() ?? {};
       final Map<String, dynamic> challenges =
           (data["activeChallenges"] ?? {}) as Map<String, dynamic>;
+
+      final Map<String, Map<String, dynamic>> allMap = {};
+      for (final entry in _challengeMeta.entries) {
+        allMap[entry.key] = {
+          "id": entry.key,
+          "title": entry.value["title"],
+          "icon": entry.value["icon"],
+          "progress": 0.0,
+          "isDone": false,
+        };
+      }
 
       final List<Map<String, dynamic>> active = [];
       final List<Map<String, dynamic>> completed = [];
@@ -208,30 +222,52 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
         final meta = _challengeMeta[id];
         final String title = meta?["title"] as String? ?? id;
         final IconData icon = meta?["icon"] as IconData? ?? Icons.emoji_events;
+        final bool isDone = !isActive && currentDay >= totalDays;
         final entry = {
           "id": id,
           "title": title,
           "icon": icon,
           "progress": progress,
+          "isDone": isDone,
         };
 
         if (isActive) {
           active.add(entry);
-        } else if (currentDay >= totalDays) {
+        } else if (isDone) {
           completed.add(entry);
         }
+
+        allMap[id] = entry;
       });
 
       setState(() {
         activeChallenges = active;
         completedChallenges = completed;
+        allChallenges = allMap.values.toList();
         loadingChallenges = false;
       });
     } catch (_) {
       setState(() {
         loadingChallenges = false;
+        activeChallenges = [];
+        completedChallenges = [];
+        allChallenges = _defaultChallengeList();
       });
     }
+  }
+
+  List<Map<String, dynamic>> _defaultChallengeList() {
+    return _challengeMeta.entries
+        .map(
+          (entry) => {
+            "id": entry.key,
+            "title": entry.value["title"],
+            "icon": entry.value["icon"],
+            "progress": 0.0,
+            "isDone": false,
+          },
+        )
+        .toList();
   }
 
   @override
@@ -525,12 +561,24 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
-                Text(
-                  "Päivittyy automaattisesti",
-                  style: TextStyle(
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.w600,
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue.shade800,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
                   ),
+                  onPressed: loadingChallenges
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AllChallengesPage(
+                                challenges: allChallenges,
+                              ),
+                            ),
+                          );
+                        },
+                  child: const Text("näytä kaikki \u2192"),
                 ),
               ],
             ),

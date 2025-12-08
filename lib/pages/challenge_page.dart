@@ -64,8 +64,8 @@ class _ChallengePageState extends State<ChallengePage> {
 
       setState(() {
         activeChallenge = challenges[widget.challengeId];
-        _alreadyAchieved =
-            achievements is Map && achievements.keys.contains(widget.challengeId);
+        _alreadyAchieved = achievements is Map &&
+            achievements.keys.contains(widget.challengeId);
         loading = false;
         _error = null;
       });
@@ -354,7 +354,9 @@ class _ChallengePageState extends State<ChallengePage> {
       case "exerciseWeekly":
         return widget.targetCount ?? widget.requiredSteps ?? 5;
       case "exercise":
-        return widget.targetCount ?? widget.requiredSteps ?? widget.durationDays;
+        return widget.targetCount ??
+            widget.requiredSteps ??
+            widget.durationDays;
       case "stepsAccumulated":
         return widget.requiredSteps ?? 100000;
       case "steps":
@@ -366,8 +368,8 @@ class _ChallengePageState extends State<ChallengePage> {
   double _calculateProgress() {
     if (activeChallenge == null) return 0;
     final type = activeChallenge?["type"] as String? ?? widget.type;
-    final start =
-        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final start = DateTime.tryParse(activeChallenge?["startDate"] ?? "") ??
+        DateTime.now();
     final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
     final target = activeChallenge?["target"] ?? _defaultTarget();
     final daily = Map<String, dynamic>.from(
@@ -421,8 +423,8 @@ class _ChallengePageState extends State<ChallengePage> {
 
   String _statusText(double progress) {
     if (activeChallenge == null) return "Aloita haaste";
-    final start =
-        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final start = DateTime.tryParse(activeChallenge?["startDate"] ?? "") ??
+        DateTime.now();
     final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
     final end = start.add(Duration(days: duration));
 
@@ -444,8 +446,8 @@ class _ChallengePageState extends State<ChallengePage> {
     final daily = Map<String, dynamic>.from(
       activeChallenge?["dailyProgress"] as Map<String, dynamic>? ?? {},
     );
-    final start =
-        DateTime.tryParse(activeChallenge?["startDate"] ?? "") ?? DateTime.now();
+    final start = DateTime.tryParse(activeChallenge?["startDate"] ?? "") ??
+        DateTime.now();
     final duration = activeChallenge?["durationDays"] ?? widget.durationDays;
     final end = start.add(Duration(days: duration));
     final entries = _entriesInRange(daily, start, end);
@@ -494,11 +496,14 @@ class _ChallengePageState extends State<ChallengePage> {
   }
 
   void _goHome() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const Etusivu()),
-      (route) => false,
-    );
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Etusivu()),
+      );
+    }
   }
 
   void _maybeAward(double progress) {
