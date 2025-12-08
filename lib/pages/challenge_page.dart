@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:pnksovellus/services/achievement_service.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
 
 class ChallengePage extends StatefulWidget {
   final String challengeId;
@@ -31,6 +33,8 @@ class _ChallengePageState extends State<ChallengePage> {
   bool loading = true;
   Map<String, dynamic>? activeChallenge;
   String? _error;
+  bool _alreadyAchieved = false;
+  final AchievementService _achievementService = AchievementService();
 
   @override
   void initState() {
@@ -56,9 +60,12 @@ class _ChallengePageState extends State<ChallengePage> {
           .get();
 
       final challenges = doc.data()?["activeChallenges"] ?? {};
+      final achievements = doc.data()?["achievements"] ?? {};
 
       setState(() {
         activeChallenge = challenges[widget.challengeId];
+        _alreadyAchieved =
+            achievements is Map && achievements.keys.contains(widget.challengeId);
         loading = false;
         _error = null;
       });
@@ -138,7 +145,7 @@ class _ChallengePageState extends State<ChallengePage> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => _goHome(),
                     child: const Text("Takaisin"),
                   )
                 ],
@@ -158,20 +165,6 @@ class _ChallengePageState extends State<ChallengePage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Back button
-            Positioned(
-              top: 10,
-              left: 10,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-            ),
-
             // Main content scroll
             SingleChildScrollView(
               child: Column(
@@ -228,6 +221,24 @@ class _ChallengePageState extends State<ChallengePage> {
                 ],
               ),
             ),
+
+            // Back button on top of scroll content
+            Positioned(
+              top: 10,
+              left: 10,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _goHome,
+                child: const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Icon(
+                    Icons.arrow_back_ios_new,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -253,6 +264,7 @@ class _ChallengePageState extends State<ChallengePage> {
     const textBlue = Color(0xFF485885);
 
     final totalProgress = _calculateProgress();
+    _maybeAward(totalProgress);
     final statusText = _statusText(totalProgress);
     final detail = _progressDetail();
 
@@ -479,5 +491,24 @@ class _ChallengePageState extends State<ChallengePage> {
       if (d == null) return false;
       return !d.isBefore(start) && !d.isAfter(end);
     });
+  }
+
+  void _goHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const Etusivu()),
+      (route) => false,
+    );
+  }
+
+  void _maybeAward(double progress) {
+    if (_alreadyAchieved) return;
+    if (progress >= 1.0) {
+      _alreadyAchieved = true;
+      _achievementService.award(widget.challengeId, widget.title);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Saavutus ansaittu!")),
+      );
+    }
   }
 }
