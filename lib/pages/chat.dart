@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pnksovellus/pages/omaterveys.dart';
+import 'package:pnksovellus/pages/profile.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'support_bot.dart';
 
@@ -98,6 +100,28 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    const double swipeVelocityThreshold = 400; // pixels per second
+    double velocity = details.velocity.pixelsPerSecond.dx;
+
+    if (velocity.abs() > swipeVelocityThreshold) {
+      if (velocity > 0) {
+        // Swipe right → go to Omaterveys
+        _navigateTo(const ProfilePage());
+      } else {
+        // Swipe left → go to Asetukset
+        _navigateTo(const Omaterveys());
+      }
+    }
+  }
+
+  void _navigateTo(Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -107,16 +131,19 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F0FF),
-      appBar: _buildHeader(),
-      body: Column(
-        children: [
-          Expanded(child: _buildMessages()),
-          _buildInputBar(),
-        ],
+    return GestureDetector(
+      onHorizontalDragEnd: _handleHorizontalSwipe,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE8F0FF),
+        appBar: _buildHeader(),
+        body: Column(
+          children: [
+            Expanded(child: _buildMessages()),
+            _buildInputBar(),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -367,15 +394,15 @@ class _TypingDotsState extends State<TypingDots>
           offset: Offset(0, -6 * bounce),
           child: Opacity(
             opacity: 0.4 + (bounce * 0.6),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2E5AAC),
-                  shape: BoxShape.circle,
-                ),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 8,
+              width: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xFF2E5AAC),
+                shape: BoxShape.circle,
               ),
+            ),
           ),
         );
       },

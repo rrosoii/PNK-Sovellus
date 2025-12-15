@@ -11,7 +11,7 @@ import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
-
+import 'package:permission_handler/permission_handler.dart';
 
 class AsetuksetPage extends StatefulWidget {
   const AsetuksetPage({super.key});
@@ -36,6 +36,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     _isLoggedIn = FirebaseAuth.instance.currentUser != null;
     _loadAvatarPath();
     _loadUsername();
+    _loadNotificationsSetting();
   }
 
   @override
@@ -60,6 +61,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     });
     _loadAvatarPath();
     _loadUsername();
+    _loadNotificationsSetting();
   }
 
   Future<void> _loadUsername() async {
@@ -71,6 +73,22 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
 
   Future<void> _saveUsername(String name) async {
     await _dataService.saveProfileName(name);
+  }
+
+  Future<void> _loadNotificationsSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedValue = prefs.getBool('notifications_enabled') ?? true;
+    setState(() => ilmoitukset = savedValue);
+  }
+
+  Future<void> _saveNotificationsSetting(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', enabled);
+
+    if (enabled) {
+      // Request notification permission if enabling
+      await Permission.notification.request();
+    }
   }
 
   void _editUsername() {
@@ -547,7 +565,10 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
           value: ilmoitukset,
           activeColor: Colors.white,
           activeTrackColor: const Color.fromARGB(255, 34, 77, 156),
-          onChanged: (v) => setState(() => ilmoitukset = v),
+          onChanged: (v) {
+            setState(() => ilmoitukset = v);
+            _saveNotificationsSetting(v);
+          },
         ),
       ),
     );
@@ -577,7 +598,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                 children: [
                   const SizedBox(width: 16),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).maybePop(),
+                    onTap: () => Navigator.of(context).pop(),
                     child: const Icon(
                       Icons.arrow_back_ios,
                       color: Colors.white,
@@ -679,8 +700,6 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                         },
                       ),
                       _buildRow("Tietosuojakäytäntä", Icons.chevron_right),
-                      _buildRow("Ehdot", Icons.chevron_right),
-                      _buildRow("Personalisointi", Icons.chevron_right),
                       const SizedBox(height: 35),
                       if (_isLoggedIn) ...[
                         Center(

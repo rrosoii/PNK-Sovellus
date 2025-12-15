@@ -35,7 +35,7 @@ class _QuizPageState extends State<QuizPage> {
 
   final List<Map<String, dynamic>> _questions = [
     {
-      'question': 'Mika naista kannustaa sinua eniten liikkumaan?',
+      'question': 'Mikä naista kannustaa sinua eniten liikkumaan?',
       'options': [
         {'text': 'Terveys ja jaksaminen', 'profile': 'Koala'},
         {'text': 'Kunnon kehittaminen ja tavoitteet', 'profile': 'Susi'},
@@ -113,14 +113,6 @@ class _QuizPageState extends State<QuizPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Image.asset(
-                'assets/character.png',
-                height: 180,
-                fit: BoxFit.contain,
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Column(
@@ -261,6 +253,87 @@ class HealthProfileScreen extends StatelessWidget {
     'Delfiini': 'Yhteisollinen, kannustava, iloinen',
   };
 
+  final Map<String, String> profileDetails = const {
+    'Koala':
+        'Koala etsii arkeen hyvinvointia ja tietää levon merkityksen. Se nauttii liikkumisesta silloin kun siltä tuntuu, ja pitää tärkeimpänä hyvää oloa ja palautumista. Koala muistuttaa, että hyvinvointi on ennen kaikkea lempeyttä itseä kohtaan. Liikunta ei välttämättä ole vielä rutiini, mutta motivaatio lähtee halusta voida kokonaisvaltaisesti paremmin.',
+    'Susi':
+        'Susi on määrätietoinen ja voimakas. Se liikkuu säännöllisesti ja tavoitteellisesti, seuraa jälkiään tarkasti sekä toimii johdonmukaisesti. Susi haluaa kehittää itseään ja nähdä konkreettisia tuloksia. Susi innostuu datasta, mittareista ja haasteista, jotka auttavat kehittymään askel askeleelta.',
+    'Delfiini':
+        'Delfiini on sosiaalinen, energinen ja iloinen liikkuja, joka nauttii yhteisestä tekemisestä ja leikistä. Se saa voimaa ryhmästä ja löytää liikkumisen ilon yhdessä muiden kanssa. Delfiini muistuttaa, että hyvinvointi kasvaa jaettuna.',
+  };
+
+  void _showProfileDetailsDialog(BuildContext context) {
+    final profileEmojis = {
+      'Koala': '🐨',
+      'Susi': '🐺',
+      'Delfiini': '🐬',
+    };
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${profileEmojis[profile] ?? ''} $profile',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F3C88),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    profileDetails[profile] ?? '',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.black87,
+                      height: 1.6,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1F3C88),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ymmärrän',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String description = profileDescriptions[profile] ?? '';
@@ -317,14 +390,17 @@ class HealthProfileScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "Mita hyvinvointiprofiilini tarkoittaa?",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF607C9B),
-                      decoration: TextDecoration.underline,
+                  GestureDetector(
+                    onTap: () => _showProfileDetailsDialog(context),
+                    child: const Text(
+                      "Mitä hyvinvointiprofiilini tarkoittaa?",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF607C9B),
+                        decoration: TextDecoration.underline,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -346,7 +422,7 @@ class HealthProfileScreen extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        "Selva!",
+                        "Selvä!",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
