@@ -20,17 +20,8 @@ import 'package:pnksovellus/pages/article_view.dart';
 import 'package:pnksovellus/services/achievement_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ArticlesListPage extends StatelessWidget {
-  const ArticlesListPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Kaikki artikkelit')),
-      body: const Center(child: Text('Articles list')),
-    );
-  }
-}
+// Removed unused placeholder `ArticlesListPage` to avoid confusion
+// The real article list page is implemented in lib/pages/article_page.dart
 
 class Etusivu extends StatefulWidget {
   const Etusivu({super.key});
@@ -455,7 +446,8 @@ class _EtusivuState extends State<Etusivu> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
-                                                    const ArticleListPage(),
+                                                    ArticleListPage(
+                                                        initialCategory: 'Kaikki'),
                                               ),
                                             );
                                           },
@@ -493,10 +485,10 @@ class _EtusivuState extends State<Etusivu> {
                                     child: ListView(
                                       scrollDirection: Axis.horizontal,
                                       padding: const EdgeInsets.only(left: 8),
-                                      children: const [
+                                      children: [
                                         CategoryChip(
-                                          icon: Icons.bedtime,
-                                          label: 'Uni',
+                                          icon: Icons.self_improvement,
+                                          label: 'voi paremmin',
                                           gradientColors: [
                                             Color(0xFF74B9FF),
                                             Color(0xFF6CA7FF)
@@ -505,11 +497,21 @@ class _EtusivuState extends State<Etusivu> {
                                             Color(0xFF5FA8FF),
                                             Color(0xFF2F7CFF)
                                           ],
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ArticleListPage(
+                                                  initialCategory: 'voi paremmin',
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                         SizedBox(width: 16),
                                         CategoryChip(
-                                          icon: Icons.restaurant_menu,
-                                          label: 'Ravinto',
+                                          icon: Icons.directions_run,
+                                          label: 'paranna kuntoa',
                                           gradientColors: [
                                             Color(0xFFC39BFF),
                                             Color(0xFFB28CFF)
@@ -518,11 +520,21 @@ class _EtusivuState extends State<Etusivu> {
                                             Color(0xFFB785FF),
                                             Color(0xFF9F60FF)
                                           ],
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ArticleListPage(
+                                                  initialCategory: 'paranna kuntoa',
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                         SizedBox(width: 16),
                                         CategoryChip(
-                                          icon: Icons.favorite,
-                                          label: 'Sydän',
+                                          icon: Icons.emoji_events,
+                                          label: 'saavuta huippukunto',
                                           gradientColors: [
                                             Color(0xFF7DEFA5),
                                             Color(0xFF57DB80)
@@ -531,19 +543,16 @@ class _EtusivuState extends State<Etusivu> {
                                             Color(0xFF63E690),
                                             Color(0xFF34C967)
                                           ],
-                                        ),
-                                        SizedBox(width: 16),
-                                        CategoryChip(
-                                          icon: Icons.bolt,
-                                          label: 'Energia',
-                                          gradientColors: [
-                                            Color(0xFF8EF0E6),
-                                            Color(0xFF63D8CF)
-                                          ],
-                                          iconGradient: [
-                                            Color(0xFF6AEFE0),
-                                            Color(0xFF30CABA)
-                                          ],
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ArticleListPage(
+                                                  initialCategory: 'saavuta huippukunto',
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                         SizedBox(width: 16),
                                       ],
@@ -1318,6 +1327,7 @@ class CategoryChip extends StatelessWidget {
   final String label;
   final List<Color> gradientColors;
   final List<Color> iconGradient;
+  final VoidCallback? onTap;
 
   const CategoryChip({
     super.key,
@@ -1325,65 +1335,75 @@ class CategoryChip extends StatelessWidget {
     required this.label,
     required this.gradientColors,
     required this.iconGradient,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 130, // bigger width
-      height: 130, // bigger height
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradientColors,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 130, // bigger width
+        height: 130, // bigger height
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // ICON
-          Container(
-            width: 60,
-            height: 60,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: iconGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Icon(
-                icon,
-                size: 30,
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // ICON
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
                 color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: iconGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: Icon(
+                  icon,
+                  size: 30,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-          // TEXT INSIDE THE BOX
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
+            // TEXT INSIDE THE BOX — allow two lines and center-align so long labels fit
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
