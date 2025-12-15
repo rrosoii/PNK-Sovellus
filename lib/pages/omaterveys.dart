@@ -330,7 +330,8 @@ class _TrackerPageState extends State<TrackerPage> {
 
   Future<void> _loadExerciseData() async {
     if (!isLoggedIn) {
-      final raw = await _dataService.loadExerciseData(_exerciseKey(currentMonth));
+      final raw =
+          await _dataService.loadExerciseData(_exerciseKey(currentMonth));
       if (raw == null || raw.isEmpty) {
         setState(() => exerciseLog = {});
         return;
@@ -438,165 +439,80 @@ class _TrackerPageState extends State<TrackerPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32),
-              child: Column(
-                children: [
-                  _buildTopPart(today),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        // ===================== CALENDAR =====================
-                        Positioned.fill(
-                          child: SingleChildScrollView(
-                            physics: const NeverScrollableScrollPhysics(),
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 10),
-                                _buildCalendarCard(),
-                                const SizedBox(height: 20),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildTopPart(today),
+                          const SizedBox(height: 10),
+                          _buildCalendarCard(),
+                          const SizedBox(height: 20),
 
-                                // ------- TOGGLE BUTTON -------
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      showExercises = true;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(18),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          blurRadius: 12,
-                                          color: Colors.black.withOpacity(0.08),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Text(
-                                          "Näytä liikuntasuoritukset",
-                                          style: TextStyle(
-                                            color: Color(0xFF233A72),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(Icons.keyboard_arrow_up,
-                                            color: Color(0xFF233A72)),
-                                      ],
-                                    ),
-                                  ),
+                          // ------- TOGGLE BUTTON -------
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                showExercises = true;
+                              });
+                            },
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 10,
                                 ),
-
-                                const SizedBox(height: 120),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // ===================== EXERCISE CARD POPUP =====================
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 350),
-                          curve: Curves.easeOutCubic,
-
-                          // if visible → slide up over calendar
-                          // if hidden → slide fully offscreen bottom
-                          bottom: showExercises ? 0 : -500,
-                          left: 0,
-                          right: 0,
-
-                          child: Container(
-                            padding: const EdgeInsets.only(top: 12),
-                            decoration: const BoxDecoration(
-                              color: Colors.transparent,
-                            ),
-                            child: Column(
-                              children: [
-                                // ---- DRAG HANDLE / HIDE BUTTON ----
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      showExercises = false;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 10,
+                                margin: const EdgeInsets.only(bottom: 24),
+                                constraints:
+                                    const BoxConstraints(maxWidth: 280),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      blurRadius: 12,
+                                      color: Colors.black.withOpacity(0.08),
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(18),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          blurRadius: 12,
-                                          color: Colors.black.withOpacity(0.08),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Text(
-                                          "Piilota",
-                                          style: TextStyle(
-                                            color: Color(0xFF233A72),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(Icons.keyboard_arrow_down,
-                                            color: Color(0xFF233A72)),
-                                      ],
-                                    ),
-                                  ),
+                                  ],
                                 ),
-
-                                const SizedBox(height: 10),
-
-                                // ---- EXERCISE CARD ITSELF ----
-                                Container(
-                                  height: 350,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 16),
-                                  padding: const EdgeInsets.all(18),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(22),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        blurRadius: 12,
-                                        color: Colors.black.withOpacity(0.08),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Text(
+                                      "Näytä liikuntasuoritukset",
+                                      style: TextStyle(
+                                        color: Color(0xFF233A72),
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                    ],
-                                  ),
-                                  child: ListView(
-                                    controller: _exerciseCardScroll,
-                                    padding: EdgeInsets.zero,
-                                    children: [
-                                      _buildExerciseCard(),
-                                    ],
-                                  ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.keyboard_arrow_up,
+                                        color: Color(0xFF233A72)),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 180),
+                        ],
+                      ),
                     ),
-                  )
-                ],
-              ),
+                  ),
+                );
+              },
             ),
             _decorBalls(),
+            _buildExerciseOverlay(context),
           ],
         ),
       ),
@@ -633,144 +549,294 @@ class _TrackerPageState extends State<TrackerPage> {
     );
   }
 
+  Widget _buildExerciseOverlay(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      left: 0,
+      right: 0,
+      top: showExercises ? 0 : screenHeight,
+      bottom: showExercises ? 0 : -screenHeight,
+      child: IgnorePointer(
+        ignoring: !showExercises,
+        child: Stack(
+          children: [
+            // dim background
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  showExercises = false;
+                });
+              },
+              child: Container(
+                color: Colors.black.withOpacity(0.12),
+              ),
+            ),
+
+            // bottom sheet content
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 12),
+                    decoration: const BoxDecoration(
+                      color: Colors.transparent,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ---- DRAG HANDLE / HIDE BUTTON ----
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              showExercises = false;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  blurRadius: 12,
+                                  color: Colors.black.withOpacity(0.08),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text(
+                                  "Piilota",
+                                  style: TextStyle(
+                                    color: Color(0xFF233A72),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(Icons.keyboard_arrow_down,
+                                    color: Color(0xFF233A72)),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ---- EXERCISE CARD ITSELF ----
+                        Container(
+                          height: 350,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                blurRadius: 12,
+                                color: Colors.black.withOpacity(0.08),
+                              ),
+                            ],
+                          ),
+                          child: ListView(
+                            controller: _exerciseCardScroll,
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            children: [
+                              _buildExerciseCard(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWaterAndMoods(DateTime today) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              // minus button
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (waterGlasses > 0) waterGlasses--;
-                    if (waterGlasses > 0) {
-                      waterMap[selectedDay] = waterGlasses;
-                    } else {
-                      waterMap.remove(selectedDay);
-                    }
-                  });
-                  _saveWaterData();
-                },
-                child: Icon(
-                  Icons.remove_circle_outline,
-                  size: 30,
-                  color: const Color(0xFF233A72),
+          // keep controls fixed width but allow rest of row to flex for moods
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // minus button
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (waterGlasses > 0) waterGlasses--;
+                      if (waterGlasses > 0) {
+                        waterMap[selectedDay] = waterGlasses;
+                      } else {
+                        waterMap.remove(selectedDay);
+                      }
+                    });
+                    _saveWaterData();
+                  },
+                  child: Icon(
+                    Icons.remove_circle_outline,
+                    size: 30,
+                    color: const Color(0xFF233A72),
+                  ),
                 ),
-              ),
 
-              const SizedBox(width: 3),
+                const SizedBox(width: 3),
 
-              // water glass with glow
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.8),
-                      blurRadius: 18,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset(
-                      "assets/icons/waterglass.png",
-                      width: 65,
-                      height: 80,
-                    ),
-                    Transform.translate(
-                      offset: const Offset(
-                          0, 16), // move down; adjust value to taste
-                      child: Text(
-                        "$waterGlasses",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 255, 255, 255),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 3),
-
-              // plus button
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    waterGlasses++;
-                    waterMap[selectedDay] = waterGlasses;
-                  });
-                  _saveWaterData();
-                },
-                child: Icon(
-                  Icons.add_circle_outline,
-                  size: 30,
-                  color: const Color(0xFF233A72),
-                ),
-              ),
-            ],
-          ),
-
-          // moods + clear
-          // moods (tap same mood again to clear)
-          Row(
-            children: List.generate(3, (i) {
-              final bool isSelectedForDay = moodMap[selectedDay] == i;
-
-              return GestureDetector(
-                onTap: () {
-                  if (_isFutureDay(selectedDay)) return;
-                  setState(() {
-                    if (moodMap[selectedDay] == i) {
-                      // tap same mood again -> clear it
-                      moodMap.remove(selectedDay);
-                      selectedMood = -1;
-                    } else {
-                      // set mood
-                      moodMap[selectedDay] = i;
-                      selectedMood = i;
-                    }
-                  });
-                  _saveMoodData();
-                },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 5),
-                  padding: const EdgeInsets.only(bottom: 10),
+                // water glass with glow
+                Container(
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelectedForDay
-                        ? Colors.white.withOpacity(0.5)
-                        : Colors.transparent,
-                    boxShadow: isSelectedForDay
-                        ? [
-                            BoxShadow(
-                              color: const Color.fromARGB(255, 255, 255, 255)
-                                  .withOpacity(0.55),
-                              blurRadius: 30,
-                              spreadRadius: 6,
-                            ),
-                          ]
-                        : [],
+                    color: Colors.white.withOpacity(0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.8),
+                        blurRadius: 18,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
-                  child: Image.asset(
-                    moodIcons[i],
-                    width: 65,
-                    height: 65,
-                    fit: BoxFit.contain,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.asset(
+                        "assets/icons/waterglass.png",
+                        width: 65,
+                        height: 80,
+                      ),
+                      Transform.translate(
+                        offset: const Offset(
+                            0, 16), // move down; adjust value to taste
+                        child: Text(
+                          "$waterGlasses",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 255, 255, 255),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            }),
+
+                const SizedBox(width: 3),
+
+                // plus button
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      waterGlasses++;
+                      waterMap[selectedDay] = waterGlasses;
+                    });
+                    _saveWaterData();
+                  },
+                  child: Icon(
+                    Icons.add_circle_outline,
+                    size: 30,
+                    color: const Color(0xFF233A72),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // moods + clear (responsive sizing to avoid overflow)
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const double spacing = 8;
+                const double maxIcon = 70;
+                const double minIcon = 32;
+                final double available = constraints.maxWidth - spacing * 2;
+                final double iconSize =
+                    (available / 3).clamp(minIcon, maxIcon).toDouble();
+
+                return Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit:
+                        BoxFit.scaleDown, // keeps a single row, scales if tight
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(3, (i) {
+                        final bool isSelectedForDay = moodMap[selectedDay] == i;
+
+                        return Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: spacing / 2),
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_isFutureDay(selectedDay)) return;
+                              setState(() {
+                                if (moodMap[selectedDay] == i) {
+                                  // tap same mood again -> clear it
+                                  moodMap.remove(selectedDay);
+                                  selectedMood = -1;
+                                } else {
+                                  // set mood
+                                  moodMap[selectedDay] = i;
+                                  selectedMood = i;
+                                }
+                              });
+                              _saveMoodData();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelectedForDay
+                                    ? Colors.white.withOpacity(0.5)
+                                    : Colors.transparent,
+                                boxShadow: isSelectedForDay
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color.fromARGB(
+                                                  255, 255, 255, 255)
+                                              .withOpacity(0.55),
+                                          blurRadius: 30,
+                                          spreadRadius: 6,
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Image.asset(
+                                moodIcons[i],
+                                width: iconSize,
+                                height: iconSize,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -996,7 +1062,8 @@ class _TrackerPageState extends State<TrackerPage> {
                   _saveMoodData();
                 },
                 child: Container(
-                  margin: const EdgeInsets.all(4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                   decoration: BoxDecoration(
                     color: bgColor, // apply mood/today tint (set above)
                     borderRadius: BorderRadius.circular(50),
@@ -1022,17 +1089,26 @@ class _TrackerPageState extends State<TrackerPage> {
                       // =============== ICONS FOR ACTIVITIES ===============
                       if (dayIcons.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 1,
-                            children: dayIcons.take(3).map((ico) {
-                              return Icon(
-                                ico,
-                                size: 10,
-                                color: const Color(0xFF2E5AAC),
-                              );
-                            }).toList(),
+                          padding: const EdgeInsets.only(top: 1),
+                          child: SizedBox(
+                            height: 12,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: dayIcons.take(3).map((ico) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 1),
+                                    child: Icon(
+                                      ico,
+                                      size: 8,
+                                      color: const Color(0xFF2E5AAC),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           ),
                         ),
 
@@ -1467,7 +1543,6 @@ class _TrackerPageState extends State<TrackerPage> {
       ),
     );
   }
-
 }
 
 // ========================= STEP ARC PAINTER =========================
@@ -1548,7 +1623,7 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
   // Default activities
   final List<String> _defaultActivities = [
     "Juoksu",
-    "Pyöräily",
+    "Pyäräily",
     "Kävely",
     "Kuntosali",
     "Jooga",
@@ -2161,12 +2236,18 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
       maxChildSize: 0.92,
       minChildSize: 0.92,
       builder: (_, controller) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            15,
+            20,
+            15 + bottomInset, // lift content when keyboard is visible
+          ),
           child: Column(
             children: [
               // Top row: X and blue Tallenna button

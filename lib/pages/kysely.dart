@@ -31,31 +31,29 @@ class _QuizPageState extends State<QuizPage> {
   int _currentQuestionIndex = 0;
   final UserDataService _dataService = UserDataService();
 
-  // Profile points tally
   Map<String, int> profilePoints = {'Koala': 0, 'Susi': 0, 'Delfiini': 0};
 
-  // Quiz questions with profile mapping for each option
   final List<Map<String, dynamic>> _questions = [
     {
-      'question': 'Mikä näistä kannustaa sinua eniten liikkumaan?',
+      'question': 'Mika naista kannustaa sinua eniten liikkumaan?',
       'options': [
         {'text': 'Terveys ja jaksaminen', 'profile': 'Koala'},
-        {'text': 'Kunnon kehittäminen ja tavoitteet', 'profile': 'Susi'},
-        {'text': 'Yhteisöllisyys ja hauskuus', 'profile': 'Delfiini'},
+        {'text': 'Kunnon kehittaminen ja tavoitteet', 'profile': 'Susi'},
+        {'text': 'Yhteisollisyys ja hauskuus', 'profile': 'Delfiini'},
       ],
     },
     {
-      'question': 'Kuinka usein harrastat hengästyttävää liikuntaa?',
+      'question': 'Kuinka usein harrastat hengastyttavaa liikuntaa?',
       'options': [
         {'text': 'Harvemmin kuin kerran viikossa', 'profile': 'Koala'},
         {'text': '1-3 kertaa viikossa', 'profile': 'Delfiini'},
-        {'text': '3 kertaa tai enemmän', 'profile': 'Susi'},
+        {'text': '3 kertaa tai enemman', 'profile': 'Susi'},
       ],
     },
     {
       'question': 'Miten koet palautuvasi arjen kuormituksesta?',
       'options': [
-        {'text': 'Huonosti, olen usein väsynyt', 'profile': 'Koala'},
+        {'text': 'Huonosti, olen usein vasyynyt', 'profile': 'Koala'},
         {
           'text': 'Kohtalaisesti, jaksan useimmiten hyvin',
           'profile': 'Delfiini',
@@ -64,35 +62,33 @@ class _QuizPageState extends State<QuizPage> {
       ],
     },
     {
-      'question': 'Mikä seuraavista liikuntamuodoista kiinnostaa sinua eniten?',
+      'question': 'Mika seuraavista liikuntamuodoista kiinnostaa sinua eniten?',
       'options': [
         {
-          'text': 'Kestävyysharjoittelu (esim. juoksu, pyöräily)',
+          'text': 'Kestavyys (juoksu, pyoraily)',
           'profile': 'Delfiini',
         },
         {
-          'text': 'Voimaharjoittelu (esim. kuntosali, kehonpainoharjoittelu)',
+          'text': 'Voimaharjoittelu (kuntosali, kehonpaino)',
           'profile': 'Susi',
         },
         {
-          'text': 'Liikkuvuusharjoittelu ja venyttely (esim. pilates, jooga)',
+          'text': 'Liikkuvuus ja venyttely (pilates, jooga)',
           'profile': 'Koala',
         },
       ],
     },
   ];
 
-  // Handle option selection
   Future<void> _nextQuestion(int selectedIndex) async {
-    String selectedProfile =
+    final String selectedProfile =
         _questions[_currentQuestionIndex]['options'][selectedIndex]['profile'];
     profilePoints[selectedProfile] = profilePoints[selectedProfile]! + 1;
 
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() => _currentQuestionIndex++);
     } else {
-      // Determine final profile (highest points)
-      String finalProfile = profilePoints.entries
+      final String finalProfile = profilePoints.entries
           .reduce((a, b) => a.value >= b.value ? a : b)
           .key;
 
@@ -117,7 +113,6 @@ class _QuizPageState extends State<QuizPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Bottom-left mascot image (use available asset)
             Align(
               alignment: Alignment.bottomLeft,
               child: Image.asset(
@@ -260,106 +255,110 @@ class HealthProfileScreen extends StatelessWidget {
   final String profile;
   const HealthProfileScreen({super.key, required this.profile});
 
-  // Descriptions for each profile
   final Map<String, String> profileDescriptions = const {
-    'Koala': 'Rauhallinen, lempeä, palautuva',
-    'Susi': 'keskittynyt, analyyttinen, kunnianhimoinen',
-    'Delfiini': 'Yhteisöllinen, kannustava, iloinen',
+    'Koala': 'Rauhallinen, lempea, palautuva',
+    'Susi': 'Keskittynyt, analyyttinen, kunnianhimoinen',
+    'Delfiini': 'Yhteisollinen, kannustava, iloinen',
   };
 
   @override
   Widget build(BuildContext context) {
-    String description = profileDescriptions[profile] ?? '';
+    final String description = profileDescriptions[profile] ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFE7F0FF),
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SizedBox(height: 40),
-            Column(
-              children: [
-                const Text(
-                  "Sinun hyvinvointiprofiilisi on",
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F3C88),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-                // Large circle with profile name
-                Container(
-                  width: 500,
-                  height: 500,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    profile,
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double circleSize =
+                (constraints.biggest.shortestSide * 1.2).clamp(260.0, 480.0);
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Sinun hyvinvointiprofiilisi on",
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF1F3C88),
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF1F3C88),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "Mitä hyvinvointiprofiilini tarkoittaa?",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF607C9B),
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate to home screen or previous screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => Etusivu()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1F3C88),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text(
-                    "Selvä!",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(height: 28),
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: const BoxDecoration(
                       color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      profile,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F3C88),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF1F3C88),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Mita hyvinvointiprofiilini tarkoittaa?",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF607C9B),
+                      decoration: TextDecoration.underline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Etusivu(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1F3C88),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: const Text(
+                        "Selva!",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

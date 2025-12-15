@@ -18,26 +18,29 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(context, Icons.home, 'Etusivu', 0),
-          _buildNavItem(context, Icons.bar_chart_rounded, 'OmaTerveys', 1),
-          _buildNavItem(context, Icons.chat_bubble_outline, 'Chatti', 2),
-          _buildNavItem(context, Icons.person_outline, 'Profiili', 3),
-        ],
+    return SafeArea(
+      top: false, // let content avoid bottom gesture/navigation areas
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildNavItem(context, Icons.home, 'Etusivu', 0),
+            _buildNavItem(context, Icons.bar_chart_rounded, 'OmaTerveys', 1),
+            _buildNavItem(context, Icons.chat_bubble_outline, 'Chatti', 2),
+            _buildNavItem(context, Icons.person_outline, 'Profiili', 3),
+          ],
+        ),
       ),
     );
   }

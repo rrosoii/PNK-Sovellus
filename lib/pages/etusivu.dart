@@ -52,7 +52,6 @@ class _EtusivuState extends State<Etusivu> {
   final ArticleService _articleService = ArticleService();
   final AchievementService _achievementService = AchievementService();
   final TextEditingController _searchController = TextEditingController();
-  final LayerLink _searchFieldLink = LayerLink();
   List<AjankohtaistaItem> _ajankohtaista = [];
   List<Article> _allArticles = [];
   List<Article> _searchResults = [];
@@ -158,11 +157,11 @@ class _EtusivuState extends State<Etusivu> {
                   builder: (context, constraints) {
                     final overlayWidth = constraints.maxWidth - 32;
                     return SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
+                      physics: const ClampingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
                         child: Stack(
                           children: [
                             Positioned(
@@ -185,57 +184,45 @@ class _EtusivuState extends State<Etusivu> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 16, 16, 90),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                // Notifications & Settings
-                                Align(
-                                  alignment: Alignment.topRight,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildIconButton(
-                                        Icons.notifications,
-                                        'Ilmoitukset',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildIconButton(
-                                        Icons.settings,
-                                        'Asetukset',
-                            ),
-                            if (_searchResults.isNotEmpty)
-                              CompositedTransformFollower(
-                                link: _searchFieldLink,
-                                showWhenUnlinked: false,
-                                offset: const Offset(0, 56),
-                                child: SizedBox(
-                                  width: overlayWidth,
-                                  child: Material(
-                                    elevation: 8,
-                                    color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: _buildSearchResults(),
+                                  // Notifications & Settings
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildIconButton(
+                                          Icons.notifications,
+                                          'Ilmoitukset',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildIconButton(
+                                          Icons.settings,
+                                          'Asetukset',
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
 
-                                const SizedBox(height: 20),
+                                  const SizedBox(height: 20),
 
-                                // Search bar
-                                CompositedTransformTarget(
-                                  link: _searchFieldLink,
-                                  child: TextField(
-                                    controller: _searchController,
-                                    onChanged: _onSearchChanged,
-                                    decoration: InputDecoration(
-                                      hintText: 'Hae artikkeleja',
-                                      prefixIcon: const Icon(Icons.search),
-                                      suffixIcon:
-                                          _searchController.text.isNotEmpty
+                                  // Search bar + overlayed results (leader before follower)
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      TextField(
+                                        controller: _searchController,
+                                        onChanged: _onSearchChanged,
+                                        decoration: InputDecoration(
+                                          hintText: 'Hae artikkeleja',
+                                          prefixIcon: const Icon(Icons.search),
+                                          suffixIcon: _searchController
+                                                  .text.isNotEmpty
                                               ? IconButton(
                                                   icon: const Icon(Icons.close),
                                                   onPressed: () {
@@ -244,22 +231,36 @@ class _EtusivuState extends State<Etusivu> {
                                                   },
                                                 )
                                               : null,
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        vertical: 10,
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(30),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                        ),
                                       ),
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(30),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
+                                      if (_searchResults.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          width: overlayWidth,
+                                          child: Material(
+                                            elevation: 8,
+                                            color: Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                            child: _buildSearchResults(),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ),
 
-                                const SizedBox(height: 20),
+                                  const SizedBox(height: 20),
 
                                   if (loadingArticles)
                                     const Padding(
@@ -272,293 +273,295 @@ class _EtusivuState extends State<Etusivu> {
                                       ),
                                     ),
 
-                                // Welcome text
-                                const Text(
-                                  'Tervetuloa takaisin!',
-                                  style: TextStyle(
-                                    fontFamily: 'Nunito',
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color.fromRGBO(72, 88, 133, 1),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Events + Ajankohtaista PageView
-                                SizedBox(
-                                  height: 255,
-                                  child: StreamBuilder<List<AjankohtaistaItem>>(
-                                    stream: _ajankohtaistaService.latest(),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.hasData) {
-                                        _ajankohtaista = snapshot.data!;
-                                      }
-                                      return Column(
-                                        children: [
-                                          Expanded(
-                                            child: PageView.builder(
-                                              controller: _articleController,
-                                              itemCount: _pageCount,
-                                              onPageChanged: (index) {
-                                                setState(() {
-                                                  _currentArticleIndex = index;
-                                                });
-                                              },
-                                              itemBuilder: (context, index) {
-                                                if (index == 0) {
-                                                  return _buildEventsSlide();
-                                                }
-                                                final item =
-                                                    _ajankohtaista[index - 1];
-                                                return _buildAjankohtaistaCard(
-                                                  item,
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          if (_pageCount > 1)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 8,
-                                              ),
-                                              child: _buildDots(),
-                                            ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 50),
-
-                                // Achievements
-                                Center(
-                                  child: ShaderMask(
-                                    shaderCallback: (bounds) =>
-                                        const LinearGradient(
-                                      colors: [
-                                        Color.fromRGBO(72, 150, 195, 1),
-                                        Color.fromRGBO(126, 197, 239, 1),
-                                      ],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    ).createShader(bounds),
-                                    child: const Text(
-                                      'Saavutukset',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: _buildAchievementsRow(),
-                                ),
-
-                                const SizedBox(height: 30),
-
-                                // Challenges title
-                                ShaderMask(
-                                  shaderCallback: (bounds) =>
-                                      const LinearGradient(
-                                    colors: [
-                                      Color.fromRGBO(67, 117, 184, 1),
-                                      Color.fromRGBO(97, 133, 197, 1),
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ).createShader(bounds),
-                                  child: const Text(
-                                    'Sinulle suositellut haasteet',
+                                  // Welcome text
+                                  const Text(
+                                    'Tervetuloa takaisin!',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontFamily: 'Nunito',
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: Color.fromRGBO(72, 88, 133, 1),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 12),
+                                  const SizedBox(height: 12),
 
-                                Row(
-                                  children: _recommendedChallengesFor(
-                                    userProfile,
+                                  // Events + Ajankohtaista PageView
+                                  SizedBox(
+                                    height: 255,
+                                    child:
+                                        StreamBuilder<List<AjankohtaistaItem>>(
+                                      stream: _ajankohtaistaService.latest(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.hasData) {
+                                          _ajankohtaista = snapshot.data!;
+                                        }
+                                        return Column(
+                                          children: [
+                                            Expanded(
+                                              child: PageView.builder(
+                                                controller: _articleController,
+                                                itemCount: _pageCount,
+                                                onPageChanged: (index) {
+                                                  setState(() {
+                                                    _currentArticleIndex =
+                                                        index;
+                                                  });
+                                                },
+                                                itemBuilder: (context, index) {
+                                                  if (index == 0) {
+                                                    return _buildEventsSlide();
+                                                  }
+                                                  final item =
+                                                      _ajankohtaista[index - 1];
+                                                  return _buildAjankohtaistaCard(
+                                                    item,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            if (_pageCount > 1)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 8,
+                                                ),
+                                                child: _buildDots(),
+                                              ),
+                                          ],
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 50),
 
-                                const SizedBox(height: 40),
+                                  // Achievements
+                                  Center(
+                                    child: ShaderMask(
+                                      shaderCallback: (bounds) =>
+                                          const LinearGradient(
+                                        colors: [
+                                          Color.fromRGBO(72, 150, 195, 1),
+                                          Color.fromRGBO(126, 197, 239, 1),
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ).createShader(bounds),
+                                      child: const Text(
+                                        'Saavutukset',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
 
-                                // ---------------------------
-                                // ARTIKKELIT (fixed section)
-                                // ---------------------------
-                                Center(
-                                  child: ShaderMask(
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: _buildAchievementsRow(),
+                                  ),
+
+                                  const SizedBox(height: 30),
+
+                                  // Challenges title
+                                  ShaderMask(
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
                                       colors: [
-                                        Color.fromRGBO(72, 150, 195, 1),
-                                        Color.fromRGBO(126, 197, 239, 1),
+                                        Color.fromRGBO(67, 117, 184, 1),
+                                        Color.fromRGBO(97, 133, 197, 1),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     ).createShader(bounds),
                                     child: const Text(
-                                      "Artikkelit",
+                                      'Sinulle suositellut haasteet',
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(height: 12),
 
-                                const SizedBox(height: 6),
-
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
+                                  Row(
+                                    children: _recommendedChallengesFor(
+                                      userProfile,
+                                    ),
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      ShaderMask(
-                                        shaderCallback: (bounds) =>
-                                            const LinearGradient(
-                                          colors: [
-                                            Color.fromRGBO(67, 117, 184, 1),
-                                            Color.fromRGBO(97, 133, 197, 1),
-                                          ],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ).createShader(bounds),
-                                        child: const Text(
-                                          "Aiheet",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
+
+                                  const SizedBox(height: 40),
+
+                                  // ---------------------------
+                                  // ARTIKKELIT (fixed section)
+                                  // ---------------------------
+                                  Center(
+                                    child: ShaderMask(
+                                      shaderCallback: (bounds) =>
+                                          const LinearGradient(
+                                        colors: [
+                                          Color.fromRGBO(72, 150, 195, 1),
+                                          Color.fromRGBO(126, 197, 239, 1),
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ).createShader(bounds),
+                                      child: const Text(
+                                        "Artikkelit",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const ArticleListPage(),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 6),
+
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        ShaderMask(
+                                          shaderCallback: (bounds) =>
+                                              const LinearGradient(
+                                            colors: [
+                                              Color.fromRGBO(67, 117, 184, 1),
+                                              Color.fromRGBO(97, 133, 197, 1),
+                                            ],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          ).createShader(bounds),
+                                          child: const Text(
+                                            "Aiheet",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
                                             ),
-                                          );
-                                        },
-                                        child: Text(
-                                          "Kaikki artikkelit",
-                                          style: TextStyle(
-                                            color: Colors.blue,
-                                            fontWeight: FontWeight.w500,
-                                            decoration:
-                                                TextDecoration.underline,
-                                            decorationColor: Colors.blue,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const ArticleListPage(),
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                            "Kaikki artikkelit",
+                                            style: TextStyle(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.w500,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                              decorationColor: Colors.blue,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
 
-                                const SizedBox(height: 8),
+                                  const SizedBox(height: 8),
 
-                                Divider(
-                                  thickness: 0.8,
-                                  height: 1,
-                                  color: Colors.grey.withOpacity(
-                                      0.3), // subtle like in your pic
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                const SizedBox(height: 12),
-
-                                SizedBox(
-                                  height:
-                                      150, // enough to fit your bigger chips
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.only(left: 8),
-                                    children: const [
-                                      CategoryChip(
-                                        icon: Icons.bedtime,
-                                        label: 'Uni',
-                                        gradientColors: [
-                                          Color(0xFF74B9FF),
-                                          Color(0xFF6CA7FF)
-                                        ],
-                                        iconGradient: [
-                                          Color(0xFF5FA8FF),
-                                          Color(0xFF2F7CFF)
-                                        ],
-                                      ),
-                                      SizedBox(width: 16),
-                                      CategoryChip(
-                                        icon: Icons.restaurant_menu,
-                                        label: 'Ravinto',
-                                        gradientColors: [
-                                          Color(0xFFC39BFF),
-                                          Color(0xFFB28CFF)
-                                        ],
-                                        iconGradient: [
-                                          Color(0xFFB785FF),
-                                          Color(0xFF9F60FF)
-                                        ],
-                                      ),
-                                      SizedBox(width: 16),
-                                      CategoryChip(
-                                        icon: Icons.favorite,
-                                        label: 'Sydän',
-                                        gradientColors: [
-                                          Color(0xFF7DEFA5),
-                                          Color(0xFF57DB80)
-                                        ],
-                                        iconGradient: [
-                                          Color(0xFF63E690),
-                                          Color(0xFF34C967)
-                                        ],
-                                      ),
-                                      SizedBox(width: 16),
-                                      CategoryChip(
-                                        icon: Icons.bolt,
-                                        label: 'Energia',
-                                        gradientColors: [
-                                          Color(0xFF8EF0E6),
-                                          Color(0xFF63D8CF)
-                                        ],
-                                        iconGradient: [
-                                          Color(0xFF6AEFE0),
-                                          Color(0xFF30CABA)
-                                        ],
-                                      ),
-                                      SizedBox(width: 16),
-                                    ],
+                                  Divider(
+                                    thickness: 0.8,
+                                    height: 1,
+                                    color: Colors.grey.withOpacity(
+                                        0.3), // subtle like in your pic
                                   ),
-                                ),
 
-                                const SizedBox(height: 50),
-                              ],
+                                  const SizedBox(height: 12),
+
+                                  const SizedBox(height: 12),
+
+                                  SizedBox(
+                                    height:
+                                        150, // enough to fit your bigger chips
+                                    child: ListView(
+                                      scrollDirection: Axis.horizontal,
+                                      padding: const EdgeInsets.only(left: 8),
+                                      children: const [
+                                        CategoryChip(
+                                          icon: Icons.bedtime,
+                                          label: 'Uni',
+                                          gradientColors: [
+                                            Color(0xFF74B9FF),
+                                            Color(0xFF6CA7FF)
+                                          ],
+                                          iconGradient: [
+                                            Color(0xFF5FA8FF),
+                                            Color(0xFF2F7CFF)
+                                          ],
+                                        ),
+                                        SizedBox(width: 16),
+                                        CategoryChip(
+                                          icon: Icons.restaurant_menu,
+                                          label: 'Ravinto',
+                                          gradientColors: [
+                                            Color(0xFFC39BFF),
+                                            Color(0xFFB28CFF)
+                                          ],
+                                          iconGradient: [
+                                            Color(0xFFB785FF),
+                                            Color(0xFF9F60FF)
+                                          ],
+                                        ),
+                                        SizedBox(width: 16),
+                                        CategoryChip(
+                                          icon: Icons.favorite,
+                                          label: 'Sydän',
+                                          gradientColors: [
+                                            Color(0xFF7DEFA5),
+                                            Color(0xFF57DB80)
+                                          ],
+                                          iconGradient: [
+                                            Color(0xFF63E690),
+                                            Color(0xFF34C967)
+                                          ],
+                                        ),
+                                        SizedBox(width: 16),
+                                        CategoryChip(
+                                          icon: Icons.bolt,
+                                          label: 'Energia',
+                                          gradientColors: [
+                                            Color(0xFF8EF0E6),
+                                            Color(0xFF63D8CF)
+                                          ],
+                                          iconGradient: [
+                                            Color(0xFF6AEFE0),
+                                            Color(0xFF30CABA)
+                                          ],
+                                        ),
+                                        SizedBox(width: 16),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 50),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
@@ -780,7 +783,8 @@ class _EtusivuState extends State<Etusivu> {
   Widget _buildIconButton(IconData icon, String tooltip) {
     if (icon == Icons.settings) {
       return IconButton(
-        icon: const Icon(Icons.settings, color: Color.fromARGB(255, 71, 147, 210), size: 25),
+        icon: const Icon(Icons.settings,
+            color: Color.fromARGB(255, 71, 147, 210), size: 25),
         tooltip: 'Asetukset',
         onPressed: () {
           Navigator.push(
@@ -797,7 +801,8 @@ class _EtusivuState extends State<Etusivu> {
       ];
 
       return PopupMenuButton<int>(
-        icon: const Icon(Icons.notifications, color: Color.fromARGB(255, 71, 147, 210), size: 25),
+        icon: const Icon(Icons.notifications,
+            color: Color.fromARGB(255, 71, 147, 210), size: 25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
         offset: const Offset(0, 40),
@@ -1145,7 +1150,8 @@ class _EtusivuState extends State<Etusivu> {
         .map(
           (e) => Column(
             children: [
-              const Icon(Icons.emoji_events, color: Color(0xFF2E5AAC), size: 40),
+              const Icon(Icons.emoji_events,
+                  color: Color(0xFF2E5AAC), size: 40),
               const SizedBox(height: 4),
               SizedBox(
                 width: 90,
@@ -1220,20 +1226,38 @@ class _EtusivuState extends State<Etusivu> {
       return;
     }
     _searchDebounce = Timer(const Duration(milliseconds: 250), () {
-      final lower = query.toLowerCase();
-      final matches = _allArticles.where((a) {
-        return a.title.toLowerCase().contains(lower) ||
-            a.content.toLowerCase().contains(lower) ||
-            a.category.toLowerCase().contains(lower);
-      }).toList();
-      // Sort so title hits first
-      matches.sort((a, b) {
-        final aTitleHit = a.title.toLowerCase().contains(lower) ? 1 : 0;
-        final bTitleHit = b.title.toLowerCase().contains(lower) ? 1 : 0;
-        if (aTitleHit != bTitleHit) return bTitleHit - aTitleHit;
-        return a.title.compareTo(b.title);
-      });
-      setState(() => _searchResults = matches.take(5).toList());
+      if (!mounted) return;
+      try {
+        // Keep search light so typing stays responsive.
+        final lower = query.toLowerCase();
+        if (_allArticles.isEmpty) {
+          setState(() => _searchResults = []);
+          return;
+        }
+        String safeLower(String? v) => (v ?? "").toLowerCase();
+        final matches = _allArticles.where((a) {
+          final title = safeLower(a.title);
+          final category = safeLower(a.category);
+          // Check content only lightly (avoid huge strings causing lag)
+          final contentSnippet = safeLower(
+            a.content.length > 400 ? a.content.substring(0, 400) : a.content,
+          );
+          return title.contains(lower) ||
+              category.contains(lower) ||
+              contentSnippet.contains(lower);
+        }).toList();
+        // Sort so title hits first
+        matches.sort((a, b) {
+          final aTitleHit = a.title.toLowerCase().contains(lower) ? 1 : 0;
+          final bTitleHit = b.title.toLowerCase().contains(lower) ? 1 : 0;
+          if (aTitleHit != bTitleHit) return bTitleHit - aTitleHit;
+          return a.title.compareTo(b.title);
+        });
+        setState(() => _searchResults = matches.take(5).toList());
+      } catch (_) {
+        // If malformed article data slips through, fail silently instead of crashing.
+        if (mounted) setState(() => _searchResults = []);
+      }
     });
   }
 
