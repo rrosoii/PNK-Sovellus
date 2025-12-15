@@ -119,7 +119,7 @@ class SupportBot {
 
     // ================= PAAVO NURMI CENTER =================
 
-    if (_any(text, ["ajanvara", "varaa aika", "aika", "vara"])) {
+    if (_any(text, ["ajanvara", "varaa aika", "aika"])) {
       return "Ajanvarauksen voi tehdä nettisivuilla tai asiakaspalvelussa.";
     }
 

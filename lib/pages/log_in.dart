@@ -42,7 +42,6 @@ class _LoginPageState extends State<LoginPage> {
 
       await UserDataService().syncFromCloudToLocal();
 
-      // Navigate to home after login
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const Etusivu()),
@@ -71,105 +70,118 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFE9EFFB),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    Navigator.of(context, rootNavigator: true).maybePop();
-                  }
-                },
-              ),
-              const SizedBox(height: 20),
-              const Center(
-                child: Text(
-                  "Tervetuloa takaisin!",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E2A39),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              const Text("Email"),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                decoration: _inputDecoration("matti.meikalainen@gmail.com"),
-              ),
-              const SizedBox(height: 20),
-              const Text("Salasana"),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: !_passwordVisible,
-                decoration: _inputDecoration("Salasana123!").copyWith(
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _passwordVisible
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () =>
-                        setState(() => _passwordVisible = !_passwordVisible),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _signIn,
-                  child: const Text(
-                    "Kirjaudu sisään",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: RichText(
-                  text: TextSpan(
-                    text: "Puuttuuko sinulta tili? ",
-                    style: const TextStyle(color: Colors.black87),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            return SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextSpan(
-                        text: "Luo tili",
-                        style: TextStyle(
-                          color: const Color(0xFF3066BE),
-                          fontWeight: FontWeight.bold,
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new),
+                        onPressed: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            Navigator.of(context, rootNavigator: true)
+                                .maybePop();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      const Center(
+                        child: Text(
+                          "Tervetuloa takaisin!",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E2A39),
+                          ),
                         ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => (Luotili()),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text("Email"),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _emailController,
+                        decoration:
+                            _inputDecoration("matti.meikalainen@gmail.com"),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text("Salasana"),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: !_passwordVisible,
+                        decoration: _inputDecoration("Salasana123!").copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () => setState(
+                                () => _passwordVisible = !_passwordVisible),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _signIn,
+                          child: const Text(
+                            "Kirjaudu sisään",
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: RichText(
+                          text: TextSpan(
+                            text: "Puuttuuko sinulta tili? ",
+                            style: const TextStyle(color: Colors.black87),
+                            children: [
+                              TextSpan(
+                                text: "Luo tili",
+                                style: TextStyle(
+                                  color: const Color(0xFF3066BE),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => (Luotili()),
+                                      ),
+                                    );
+                                  },
                               ),
-                            );
-                          },
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -180,10 +192,8 @@ class _LoginPageState extends State<LoginPage> {
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 14.0,
-        horizontal: 16.0,
-      ),
+      contentPadding:
+          const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
