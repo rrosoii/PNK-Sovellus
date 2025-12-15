@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pedometer/pedometer.dart';
+import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
@@ -77,7 +77,8 @@ class _TrackerPageState extends State<TrackerPage> {
   int waterGlasses = 0;
   Map<int, int> waterMap = {};
 
-  late StreamSubscription<StepCount>? _stepSub;
+  final Health health = Health();
+  final List<HealthDataType> types = [HealthDataType.STEPS];
 
   // Health / step tracking
   int todaySteps = 0;
@@ -117,7 +118,6 @@ class _TrackerPageState extends State<TrackerPage> {
 
   @override
   void dispose() {
-    _stepSub?.cancel();
     super.dispose();
   }
 
@@ -218,24 +218,67 @@ class _TrackerPageState extends State<TrackerPage> {
   }
 
   Future<void> _startStepTracking() async {
-    final status = await Permission.activityRecognition.request();
+    // Request permissions for activity recognition
+    final activityStatus = await Permission.activityRecognition.request();
 
-    if (!status.isGranted) {
-      debugPrint("Step permission denied");
+    if (!activityStatus.isGranted) {
+      debugPrint("Activity recognition permission denied");
       return;
     }
 
-    _stepSub = Pedometer.stepCountStream.listen(
-      (event) {
+    // Request Google Fit permissions
+    try {
+      bool requested = await health.requestAuthorization(
+        types,
+        permissions: [HealthDataAccess.READ],
+      );
+
+      if (!requested) {
+        debugPrint("Google Fit authorization denied");
+        return;
+      }
+
+      // Fetch today's steps from Google Health
+      _fetchTodaySteps();
+
+      // Refresh every minute
+      Future.delayed(const Duration(minutes: 1), _fetchTodaySteps);
+    } catch (e) {
+      debugPrint("Error requesting health permissions: $e");
+    }
+  }
+
+  Future<void> _fetchTodaySteps() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+
+      List<HealthDataPoint>? healthData = await health.getHealthDataFromTypes(
+        types: types,
+        startTime: startOfDay,
+        endTime: now,
+      );
+
+      int totalSteps = 0;
+      if (healthData != null) {
+        for (final data in healthData) {
+          if (data.type == HealthDataType.STEPS) {
+            totalSteps += (data.value as num).toInt();
+          }
+        }
+      }
+
+      if (mounted) {
         setState(() {
-          todaySteps = event.steps;
+          todaySteps = totalSteps;
           todayDistanceKm = _distanceFromSteps(todaySteps);
           todayCalories = _caloriesFromSteps(todaySteps);
         });
-        _dataService.recordStepsForDate(DateTime.now(), todaySteps);
-      },
-      onError: (e) => debugPrint("Pedometer error: $e"),
-    );
+        _dataService.recordStepsForDate(now, todaySteps);
+      }
+    } catch (e) {
+      debugPrint("Error fetching health data: $e");
+    }
   }
 
   // ========================= DECORATIVE BALLS =========================
