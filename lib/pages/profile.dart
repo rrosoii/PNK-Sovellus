@@ -9,8 +9,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/pages/kysely.dart';
-import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'package:pnksovellus/pages/all_challenges.dart';
+import 'package:pnksovellus/pages/chat.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
+import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -270,28 +272,47 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
         .toList();
   }
 
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    const threshold = 400;
+    // Swipe right - go to Chatti
+    if (velocity > threshold) {
+      _navigateTo(const ChatPage());
+    }
+  }
+
+  void _navigateTo(Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE7F0FF),
       bottomNavigationBar: const AppBottomNav(currentIndex: 3),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildTopHeader(),
-              const SizedBox(height: 10),
-              _buildInfoRow(),
-              const SizedBox(height: 20),
-              _buildTitle("Saavutukset"),
-              const SizedBox(height: 10),
-              _buildAchievementsCard(),
-              const SizedBox(height: 25),
-              _buildTitle("Kyselyt"),
-              const SizedBox(height: 10),
-              _buildSurveyCard(),
-              const SizedBox(height: 40),
-            ],
+      body: GestureDetector(
+        onHorizontalDragEnd: _handleHorizontalSwipe,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildTopHeader(),
+                const SizedBox(height: 10),
+                _buildInfoRow(),
+                const SizedBox(height: 20),
+                _buildTitle("Saavutukset"),
+                const SizedBox(height: 10),
+                _buildAchievementsCard(),
+                const SizedBox(height: 25),
+                _buildTitle("Kyselyt"),
+                const SizedBox(height: 10),
+                _buildSurveyCard(),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),

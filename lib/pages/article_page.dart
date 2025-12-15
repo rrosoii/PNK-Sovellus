@@ -75,8 +75,8 @@ class _ArticleListPageState extends State<ArticleListPage> {
                   }
 
                   return ListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     itemCount: articles.length,
                     itemBuilder: (context, i) {
                       final a = articles[i];
@@ -128,7 +128,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.arrow_back_ios_new,
@@ -162,7 +162,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -258,7 +258,7 @@ class _ArticleCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -292,7 +292,7 @@ class _ArticleCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5A8FF7).withOpacity(0.12),
+                      color: const Color(0xFF5A8FF7).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -408,8 +408,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline,
-                size: 42, color: Color(0xFFB3261E)),
+            const Icon(Icons.error_outline, size: 42, color: Color(0xFFB3261E)),
             const SizedBox(height: 10),
             Text(
               message,

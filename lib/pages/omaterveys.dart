@@ -1,11 +1,13 @@
 ﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pnksovellus/pages/chat.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,6 +15,9 @@ import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:pnksovellus/pages/asetukset.dart';
+import 'package:pnksovellus/pages/etusivu.dart';
 
 final IconData defaultCustomIcon = Icons.star;
 
@@ -76,10 +81,9 @@ final ScrollController _exerciseScroll = ScrollController();
 class _TrackerPageState extends State<TrackerPage> {
   int waterGlasses = 0;
   Map<int, int> waterMap = {};
+  bool _isLoadingData = true;
 
-  final Health health = Health();
-  final List<HealthDataType> types = [HealthDataType.STEPS];
-
+  late StreamSubscription<StepCount>? _stepSub;
   // Health / step tracking
   int todaySteps = 0;
   double todayDistanceKm = 0;
@@ -105,20 +109,86 @@ class _TrackerPageState extends State<TrackerPage> {
     'assets/icons/lissuhappy.png',
   ];
 
+  // Statistics
+  Map<String, int> _monthlyStats = {};
+  String _mostCommonActivity = '';
+  double _avgStepsPerDay = 0;
+
   @override
   void initState() {
     super.initState();
     currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    _loadMoodData();
-    _loadWaterData();
-    _loadExerciseData();
-    _loadCustomActivities();
-    _startStepTracking();
+    _loadAllData();
+  }
+
+  Future<void> _loadAllData() async {
+    setState(() => _isLoadingData = true);
+    try {
+      await Future.wait([
+        _loadMoodData(),
+        _loadWaterData(),
+        _loadExerciseData(),
+        _loadCustomActivities(),
+      ]);
+      _calculateMonthlyStats();
+      await _initStepTracking();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _stepSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _initStepTracking() async {
+    // Try to request Google Fit/Health permission
+    await _requestGoogleHealthAccess();
+    await _startStepTracking();
+  }
+
+  Future<void> _requestGoogleHealthAccess() async {
+    try {
+      final health = Health();
+      // Request authorization for step data
+      final authorized =
+          await health.requestAuthorization([HealthDataType.STEPS]);
+
+      if (authorized) {
+        debugPrint("Google Fit/Health access granted");
+        // Fetch today's steps from Google Fit
+        await _fetchTodayStepsFromHealthKit(health);
+      } else {
+        debugPrint("Google Fit/Health access denied, using pedometer only");
+      }
+    } catch (e) {
+      debugPrint("Failed to request Google Fit access: $e");
+    }
+  }
+
+  Future<void> _fetchTodayStepsFromHealthKit(Health health) async {
+    try {
+      final now = DateTime.now();
+      final midnight = DateTime(now.year, now.month, now.day);
+
+      final steps = await health.getTotalStepsInInterval(midnight, now);
+
+      if (steps != null && steps > 0) {
+        setState(() {
+          todaySteps = steps;
+          todayDistanceKm = _distanceFromSteps(todaySteps);
+          todayCalories = _caloriesFromSteps(todaySteps);
+        });
+        _dataService.recordStepsForDate(DateTime.now(), todaySteps);
+        debugPrint("Fetched $steps steps from Google Fit");
+      }
+    } catch (e) {
+      debugPrint("Error fetching steps from Google Fit: $e");
+    }
   }
 
   double _distanceFromSteps(int steps) {
@@ -154,10 +224,12 @@ class _TrackerPageState extends State<TrackerPage> {
           prefs.getString(_legacyWaterKey(currentMonth));
 
       if (saved == null || saved.isEmpty) {
-        setState(() {
-          waterMap = {};
-          waterGlasses = 0;
-        });
+        if (mounted) {
+          setState(() {
+            waterMap = {};
+            waterGlasses = 0;
+          });
+        }
         return;
       }
 
@@ -169,10 +241,12 @@ class _TrackerPageState extends State<TrackerPage> {
         }
       }
 
-      setState(() {
-        waterMap = mm;
-        waterGlasses = waterMap[selectedDay] ?? 0;
-      });
+      if (mounted) {
+        setState(() {
+          waterMap = mm;
+          waterGlasses = waterMap[selectedDay] ?? 0;
+        });
+      }
       return;
     }
 
@@ -186,16 +260,20 @@ class _TrackerPageState extends State<TrackerPage> {
           mm[int.parse(k.toString())] = int.parse(v.toString());
         });
       }
-      setState(() {
-        waterMap = mm;
-        waterGlasses = waterMap[selectedDay] ?? 0;
-      });
+      if (mounted) {
+        setState(() {
+          waterMap = mm;
+          waterGlasses = waterMap[selectedDay] ?? 0;
+        });
+      }
     } catch (e) {
       debugPrint("Failed to load water from Firestore: $e");
-      setState(() {
-        waterMap = {};
-        waterGlasses = 0;
-      });
+      if (mounted) {
+        setState(() {
+          waterMap = {};
+          waterGlasses = 0;
+        });
+      }
     }
   }
 
@@ -204,6 +282,7 @@ class _TrackerPageState extends State<TrackerPage> {
       final prefs = await SharedPreferences.getInstance();
       final enc = waterMap.entries.map((e) => "${e.key}:${e.value}").join(",");
       prefs.setString(_waterLocalKey(currentMonth), enc);
+      _calculateMonthlyStats();
       return;
     }
 
@@ -212,73 +291,32 @@ class _TrackerPageState extends State<TrackerPage> {
       await _userHealthColl!.doc(docId).set(
           {'map': waterMap.map((k, v) => MapEntry(k.toString(), v))},
           SetOptions(merge: true));
+      _calculateMonthlyStats();
     } catch (e) {
       debugPrint("Failed to save water to Firestore: $e");
     }
   }
 
   Future<void> _startStepTracking() async {
-    // Request permissions for activity recognition
-    final activityStatus = await Permission.activityRecognition.request();
-
-    if (!activityStatus.isGranted) {
-      debugPrint("Activity recognition permission denied");
+    // Request pedometer/activity recognition permission
+    final status = await Permission.activityRecognition.request();
+    if (!status.isGranted) {
+      debugPrint("Pedometer permission denied");
       return;
     }
 
-    // Request Google Fit permissions
-    try {
-      bool requested = await health.requestAuthorization(
-        types,
-        permissions: [HealthDataAccess.READ],
-      );
-
-      if (!requested) {
-        debugPrint("Google Fit authorization denied");
-        return;
-      }
-
-      // Fetch today's steps from Google Health
-      _fetchTodaySteps();
-
-      // Refresh every minute
-      Future.delayed(const Duration(minutes: 1), _fetchTodaySteps);
-    } catch (e) {
-      debugPrint("Error requesting health permissions: $e");
-    }
-  }
-
-  Future<void> _fetchTodaySteps() async {
-    try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-
-      List<HealthDataPoint>? healthData = await health.getHealthDataFromTypes(
-        types: types,
-        startTime: startOfDay,
-        endTime: now,
-      );
-
-      int totalSteps = 0;
-      if (healthData != null) {
-        for (final data in healthData) {
-          if (data.type == HealthDataType.STEPS) {
-            totalSteps += (data.value as num).toInt();
-          }
-        }
-      }
-
-      if (mounted) {
+    // Listen to pedometer stream as fallback/supplement to Google Fit
+    _stepSub = Pedometer.stepCountStream.listen(
+      (event) {
         setState(() {
-          todaySteps = totalSteps;
+          todaySteps = event.steps;
           todayDistanceKm = _distanceFromSteps(todaySteps);
           todayCalories = _caloriesFromSteps(todaySteps);
         });
-        _dataService.recordStepsForDate(now, todaySteps);
-      }
-    } catch (e) {
-      debugPrint("Error fetching health data: $e");
-    }
+        _dataService.recordStepsForDate(DateTime.now(), todaySteps);
+      },
+      onError: (e) => debugPrint("Pedometer error: $e"),
+    );
   }
 
   // ========================= DECORATIVE BALLS =========================
@@ -350,7 +388,9 @@ class _TrackerPageState extends State<TrackerPage> {
   Future<void> _loadMoodData() async {
     final saved = await _dataService.loadMoodData(_monthKey(currentMonth));
     if (saved == null || saved.isEmpty) {
-      setState(() => moodMap = {});
+      if (mounted) {
+        setState(() => moodMap = {});
+      }
       return;
     }
 
@@ -363,96 +403,132 @@ class _TrackerPageState extends State<TrackerPage> {
       }
     }
 
-    setState(() => moodMap = mm);
+    if (mounted) {
+      setState(() => moodMap = mm);
+    }
   }
 
   Future<void> _saveMoodData() async {
     final enc = moodMap.entries.map((e) => "${e.key}:${e.value}").join(",");
     await _dataService.saveMoodData(_monthKey(currentMonth), enc);
+    _calculateMonthlyStats();
   }
 
   Future<void> _loadExerciseData() async {
-    if (!isLoggedIn) {
-      final raw =
-          await _dataService.loadExerciseData(_exerciseKey(currentMonth));
-      if (raw == null || raw.isEmpty) {
+    // Use the service which handles both local and Firebase storage
+    final raw = await _dataService.loadExerciseData(_exerciseKey(currentMonth));
+    debugPrint("Loading exercises for ${_exerciseKey(currentMonth)}: $raw");
+
+    if (raw == null || raw.isEmpty) {
+      if (mounted) {
         setState(() => exerciseLog = {});
-        return;
       }
-
-      final Map<int, List<Map<String, String>>> temp = {};
-      for (var item in raw.split("&")) {
-        final parts = item.split("|");
-        if (parts.length != 4) continue;
-        final day = int.tryParse(parts[0]);
-        if (day == null) continue;
-
-        temp.putIfAbsent(day, () => []);
-        temp[day]!.add({
-          "type": parts[1],
-          "duration": parts[2],
-          "distance": parts[3],
-        });
-      }
-
-      setState(() => exerciseLog = temp);
       return;
     }
 
     try {
-      final docId = "exercise_${_monthId(currentMonth)}";
-      final doc = await _userHealthColl!.doc(docId).get();
-      final data = doc.data();
-      final raw = data != null ? data['raw'] as String? : null;
-
-      if (raw == null || raw.isEmpty) {
-        setState(() => exerciseLog = {});
-        return;
-      }
-
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
       final Map<int, List<Map<String, String>>> temp = {};
-      for (var item in raw.split("&")) {
-        final parts = item.split("|");
-        if (parts.length != 4) continue;
-        final day = int.tryParse(parts[0]);
-        if (day == null) continue;
 
-        temp.putIfAbsent(day, () => []);
-        temp[day]!.add({
-          "type": parts[1],
-          "duration": parts[2],
-          "distance": parts[3],
-        });
+      decoded.forEach((dayStr, exercises) {
+        final day = int.tryParse(dayStr);
+        if (day == null) return;
+
+        temp[day] = [];
+        if (exercises is List) {
+          for (var ex in exercises) {
+            if (ex is Map) {
+              final exercise = <String, String>{};
+              ex.forEach((key, value) {
+                exercise[key.toString()] = value.toString();
+              });
+              temp[day]!.add(exercise);
+            }
+          }
+        }
+      });
+
+      debugPrint("Loaded exercises: $temp");
+      if (mounted) {
+        setState(() => exerciseLog = temp);
       }
-
-      setState(() => exerciseLog = temp);
     } catch (e) {
-      debugPrint("Failed to load exercises from Firestore: $e");
-      setState(() => exerciseLog = {});
+      debugPrint("Error decoding exercise data: $e");
+      if (mounted) {
+        setState(() => exerciseLog = {});
+      }
     }
   }
 
   Future<void> _saveExerciseData() async {
-    final List<String> encoded = [];
+    final Map<String, List<Map<String, String>>> dataToSave = {};
 
     exerciseLog.forEach((day, list) {
-      for (var e in list) {
-        final type = e['type'] ?? '';
-        final duration = e['duration'] ?? '';
-        final distance = e['distance'] ?? '';
-        encoded.add("$day|$type|$duration|$distance");
-      }
+      dataToSave[day.toString()] = list;
     });
+
+    final encoded = jsonEncode(dataToSave);
+    debugPrint(
+        "Saving exercises with key ${_exerciseKey(currentMonth)}: $encoded");
 
     await _dataService.saveExerciseData(
       _exerciseKey(currentMonth),
-      encoded.join("&"),
+      encoded,
     );
+    _calculateMonthlyStats();
   }
 
   Future<void> _recordExerciseForChallenges() async {
     final date = DateTime(currentMonth.year, currentMonth.month, selectedDay);
     await _dataService.recordExerciseForDate(date, count: 1);
+  }
+
+  void _calculateMonthlyStats() {
+    // Count total exercises by type
+    final activityCount = <String, int>{};
+    int totalExercises = 0;
+
+    exerciseLog.forEach((day, exercises) {
+      for (var exercise in exercises) {
+        final type = exercise['type'] ?? 'Unknown';
+        activityCount[type] = (activityCount[type] ?? 0) + 1;
+        totalExercises++;
+      }
+    });
+
+    // Find most common activity
+    String mostCommon = '';
+    int maxCount = 0;
+    activityCount.forEach((activity, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommon = activity;
+      }
+    });
+
+    // Calculate average mood
+    int totalMood = 0;
+    int moodCount = moodMap.length;
+    moodMap.forEach((day, mood) {
+      totalMood += mood;
+    });
+
+    // Calculate total water glasses
+    int totalWater = 0;
+    waterMap.forEach((day, glasses) {
+      totalWater += glasses;
+    });
+
+    // Store stats
+    setState(() {
+      _monthlyStats = {
+        'totalExercises': totalExercises,
+        'daysWithExercises': exerciseLog.length,
+        'avgMood': moodCount > 0 ? (totalMood / moodCount).round() : -1,
+        'totalWater': totalWater,
+      };
+      _mostCommonActivity = mostCommon;
+    });
   }
 
   void _prevMonth() {
@@ -462,6 +538,7 @@ class _TrackerPageState extends State<TrackerPage> {
     _loadMoodData();
     _loadWaterData();
     _loadExerciseData();
+    _calculateMonthlyStats();
   }
 
   void _nextMonth() {
@@ -471,92 +548,144 @@ class _TrackerPageState extends State<TrackerPage> {
     _loadMoodData();
     _loadWaterData();
     _loadExerciseData();
+    _calculateMonthlyStats();
+  }
+
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    const threshold = 400;
+    // Swipe left - go to Chatti (chat)
+    if (velocity < -threshold) {
+      _navigateTo(const ChatPage());
+    }
+    // Swipe right - go to Etusivu (home)
+    else if (velocity > threshold) {
+      _navigateTo(const Etusivu());
+    }
+  }
+
+  void _navigateTo(Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
 
+    if (_isLoadingData) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFE8F0FF),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(
+                  color: Color(0xFF2E5AAC),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ladataan tietoja...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF2E5AAC),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8F0FF),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildTopPart(today),
-                          const SizedBox(height: 10),
-                          _buildCalendarCard(),
-                          const SizedBox(height: 20),
+      body: GestureDetector(
+        onHorizontalDragEnd: _handleHorizontalSwipe,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              _decorBalls(),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildTopPart(today),
+                            const SizedBox(height: 10),
+                            _buildCalendarCard(),
+                            const SizedBox(height: 20),
 
-                          // ------- TOGGLE BUTTON -------
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                showExercises = true;
-                              });
-                            },
-                            child: Align(
-                              alignment: Alignment.center,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 10,
-                                ),
-                                margin: const EdgeInsets.only(bottom: 24),
-                                constraints:
-                                    const BoxConstraints(maxWidth: 280),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      blurRadius: 12,
-                                      color: Colors.black.withOpacity(0.08),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Text(
-                                      "Näytä liikuntasuoritukset",
-                                      style: TextStyle(
-                                        color: Color(0xFF233A72),
-                                        fontWeight: FontWeight.w600,
+                            // ------- TOGGLE BUTTON -------
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  showExercises = true;
+                                });
+                              },
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 24),
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 280),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        blurRadius: 12,
+                                        color: Colors.black.withOpacity(0.08),
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.keyboard_arrow_up,
-                                        color: Color(0xFF233A72)),
-                                  ],
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Text(
+                                        "Näytä liikuntasuoritukset",
+                                        style: TextStyle(
+                                          color: Color(0xFF233A72),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.keyboard_arrow_up,
+                                          color: Color(0xFF233A72)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
 
-                          const SizedBox(height: 180),
-                        ],
+                            const SizedBox(height: 20),
+                            _buildStatisticsCard(),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-            _decorBalls(),
-            _buildExerciseOverlay(context),
-          ],
+                  );
+                },
+              ),
+              _buildExerciseOverlay(context),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
@@ -888,9 +1017,7 @@ class _TrackerPageState extends State<TrackerPage> {
 
   Widget _buildStepArc() {
     // fallback: if health didn't work, stay with some default
-    final int displaySteps =
-        todaySteps; // or todaySteps == 0 ? steps : todaySteps;
-
+    final int displaySteps = todaySteps;
     return SizedBox(
       height: 170,
       width: double.infinity,
@@ -1213,6 +1340,173 @@ class _TrackerPageState extends State<TrackerPage> {
     );
   }
 
+  // ========================= STATISTICS =========================
+
+  Widget _buildStatisticsCard() {
+    final totalExercises = _monthlyStats['totalExercises'] ?? 0;
+    final daysWithExercises = _monthlyStats['daysWithExercises'] ?? 0;
+    final avgMood = _monthlyStats['avgMood'] ?? -1;
+    final totalWater = _monthlyStats['totalWater'] ?? 0;
+
+    final moodEmojis = ['😢', '😐', '😊'];
+    final moodLabel = avgMood >= 0 && avgMood < 3 ? moodEmojis[avgMood] : '';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Kuukauden yhteenveto",
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF233A72),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Stats grid
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            childAspectRatio: 1.4,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            children: [
+              _buildStatItem(
+                icon: Icons.fitness_center,
+                label: "Suoritukset",
+                value: totalExercises.toString(),
+                color: const Color(0xFF5A8FF7),
+              ),
+              _buildStatItem(
+                icon: Icons.calendar_today,
+                label: "Aktiivisia päiviä",
+                value: daysWithExercises.toString(),
+                color: const Color(0xFF2E5AAC),
+              ),
+              _buildStatItem(
+                icon: Icons.mood,
+                label: "Keskimieliala",
+                value: moodLabel.isNotEmpty ? moodLabel : "N/A",
+                color: const Color(0xFFFF6B6B),
+              ),
+              _buildStatItem(
+                icon: Icons.local_drink,
+                label: "Vesilasit",
+                value: totalWater.toString(),
+                color: const Color(0xFF4ECDC4),
+              ),
+            ],
+          ),
+          if (_mostCommonActivity.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F5FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFDDE3F4),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    activityIcons[_mostCommonActivity] ?? defaultCustomIcon,
+                    color: const Color(0xFF2E5AAC),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Suosituin aktiviteetti",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF607C9B),
+                        ),
+                      ),
+                      Text(
+                        _mostCommonActivity,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF233A72),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 20,
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF607C9B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ========================= EXERCISES =========================
 
   Widget _buildExerciseCard() {
@@ -1239,64 +1533,108 @@ class _TrackerPageState extends State<TrackerPage> {
             ),
           ),
 
-          // dynamic list
-          ...logsForDay.asMap().entries.map((entry) {
-            final index = entry.key;
-            final e = entry.value;
-
-            return _buildDismissibleExercise(
-              index: index,
-              name: e['type'] ?? '',
-              time: e['duration'] ?? '',
-              dist: e['distance'] ?? '',
-            );
-          }).toList(),
-
-          // Auto-create exercise from today's steps
-          if (todaySteps > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10.0),
-              child: Center(
-                child: TextButton.icon(
-                  onPressed: () {
-                    final now = DateTime.now();
-
-                    final autoEntry = <String, String>{
-                      "type": "Kävely",
-                      "duration": "0:30:00",
-                      "distance": todayDistanceKm.toStringAsFixed(2),
-                      "kcal": todayCalories.toStringAsFixed(0),
-                      "start": "${now.hour.toString().padLeft(2, '0')}"
-                          "."
-                          "${now.minute.toString().padLeft(2, '0')}",
-                    };
-
-                    setState(() {
-                      exerciseLog.putIfAbsent(selectedDay, () => []);
-                      exerciseLog[selectedDay]!.add(autoEntry);
-                    });
-                    _saveExerciseData();
-                    _recordExerciseForChallenges();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Päivän askelista luotu suoritus"),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.directions_walk,
-                      color: Color(0xFF2E5AAC)),
-                  label: const Text(
-                    "Luo suoritus päivän askelista",
+          // empty state message
+          if (count == 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F5FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFDDE3F4),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.fitness_center,
+                    size: 40,
+                    color: Color(0xFF607C9B),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Ei liikuntasuorituksia",
                     style: TextStyle(
-                      color: Color(0xFF2E5AAC),
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
+                      color: Color(0xFF233A72),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Lisää ensimmäinen suoritus painamalla +-nappia",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF607C9B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // dynamic list
+            ...logsForDay.asMap().entries.map((entry) {
+              final index = entry.key;
+              final e = entry.value;
+
+              return _buildDismissibleExercise(
+                index: index,
+                name: e['type'] ?? '',
+                time: e['duration'] ?? '',
+                dist: e['distance'] ?? '',
+              );
+            }).toList(),
+
+            // Auto-create exercise from today's steps
+            if (todaySteps > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      final now = DateTime.now();
+
+                      final autoEntry = <String, String>{
+                        "type": "Kävely",
+                        "duration": "0:30:00",
+                        "distance": todayDistanceKm.toStringAsFixed(2),
+                        "kcal": todayCalories.toStringAsFixed(0),
+                        "start": "${now.hour.toString().padLeft(2, '0')}"
+                            "."
+                            "${now.minute.toString().padLeft(2, '0')}",
+                      };
+
+                      setState(() {
+                        exerciseLog.putIfAbsent(selectedDay, () => []);
+                        exerciseLog[selectedDay]!.add(autoEntry);
+                      });
+                      _saveExerciseData();
+                      _recordExerciseForChallenges();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Päivän askelista luotu suoritus"),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.directions_walk,
+                        color: Color(0xFF2E5AAC)),
+                    label: const Text(
+                      "Luo suoritus päivän askelista",
+                      style: TextStyle(
+                        color: Color(0xFF2E5AAC),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+          ],
 
           const SizedBox(height: 10),
 
@@ -1666,7 +2004,7 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
   // Default activities
   final List<String> _defaultActivities = [
     "Juoksu",
-    "Pyäräily",
+    "Pyöräily",
     "Kävely",
     "Kuntosali",
     "Jooga",
@@ -1716,6 +2054,45 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
     distanceController.dispose();
     kcalController.dispose();
     super.dispose();
+  }
+
+  // ---------- VALIDATION ----------
+
+  String? _validateForm() {
+    // Check title
+    if (titleController.text.trim().isEmpty) {
+      return "Otsikko vaaditaan";
+    }
+
+    // Check duration
+    if (duration.inSeconds <= 0) {
+      return "Kesto täytyy olla vähintään 1 sekunti";
+    }
+
+    // Check if end time is before start time
+    final startDT = DateTime(2024, 1, 1, startTime.hour, startTime.minute);
+    final endDT = DateTime(2024, 1, 1, endTime.hour, endTime.minute);
+    if (endDT.isBefore(startDT)) {
+      return "Päättymisaika ei voi olla ennen alkamisaikaa";
+    }
+
+    // Check distance if provided
+    if (distanceController.text.isNotEmpty) {
+      final distance = double.tryParse(distanceController.text);
+      if (distance == null || distance < 0) {
+        return "Matka ei voi olla negatiivinen";
+      }
+    }
+
+    // Check kcal if provided
+    if (kcalController.text.isNotEmpty) {
+      final kcal = double.tryParse(kcalController.text);
+      if (kcal == null || kcal < 0) {
+        return "Energia ei voi olla negatiivinen";
+      }
+    }
+
+    return null;
   }
 
   // ---------- PERSIST CUSTOM ACTIVITIES ----------
@@ -2309,6 +2686,18 @@ class _AddExerciseSheetState extends State<AddExerciseSheet> {
                       ),
                     ),
                     onPressed: () {
+                      final error = _validateForm();
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: const Color(0xFFE44A4A),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+
                       final result = {
                         "type": titleController.text.trim(),
                         "duration": _formatDuration(duration),

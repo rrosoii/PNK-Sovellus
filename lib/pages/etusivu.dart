@@ -77,44 +77,62 @@ class _EtusivuState extends State<Etusivu> {
   Future<void> _loadProfile() async {
     try {
       final data = await _dataService.loadProfileData();
-      setState(() {
-        userProfile = data.profileType;
-        loadingProfile = false;
-      });
+      if (mounted) {
+        setState(() {
+          userProfile = data.profileType;
+          loadingProfile = false;
+        });
+      }
     } catch (_) {
       // Even if loading fails, show the page so the user isn't stuck on a blank screen.
-      setState(() => loadingProfile = false);
+      if (mounted) {
+        setState(() => loadingProfile = false);
+      }
     }
   }
 
   Future<void> _loadArticles() async {
-    setState(() => loadingArticles = true);
+    if (mounted) {
+      setState(() => loadingArticles = true);
+    }
     try {
       final articles = await _articleService.getArticles();
-      setState(() {
-        _allArticles = articles;
-        loadingArticles = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allArticles = articles;
+          loadingArticles = false;
+        });
+      }
     } catch (_) {
-      setState(() => loadingArticles = false);
+      if (mounted) {
+        setState(() => loadingArticles = false);
+      }
     }
   }
 
   Future<void> _loadAchievements() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      setState(() => _achievements = {});
+      if (mounted) {
+        setState(() => _achievements = {});
+      }
       return;
     }
-    setState(() => loadingAchievements = true);
+    if (mounted) {
+      setState(() => loadingAchievements = true);
+    }
     try {
       final map = await _achievementService.loadAchievements();
-      setState(() {
-        _achievements = map;
-        loadingAchievements = false;
-      });
+      if (mounted) {
+        setState(() {
+          _achievements = map;
+          loadingAchievements = false;
+        });
+      }
     } catch (_) {
-      setState(() => loadingAchievements = false);
+      if (mounted) {
+        setState(() => loadingAchievements = false);
+      }
     }
   }
 
@@ -1215,9 +1233,8 @@ class _EtusivuState extends State<Etusivu> {
     final velocity = details.primaryVelocity ?? 0;
     const threshold = 400;
     if (velocity < -threshold) {
+      // Swipe left → Omaterveys
       _navigateTo(const TrackerPage());
-    } else if (velocity > threshold) {
-      _navigateTo(const ProfilePage());
     }
   }
 
