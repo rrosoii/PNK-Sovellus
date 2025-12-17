@@ -19,6 +19,7 @@ import 'package:pnksovellus/pages/article_model.dart';
 import 'package:pnksovellus/pages/article_view.dart';
 import 'package:pnksovellus/services/achievement_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pnksovellus/services/notification_history_service.dart';
 
 // Removed unused placeholder `ArticlesListPage` to avoid confusion
 // The real article list page is implemented in lib/pages/article_page.dart
@@ -465,7 +466,8 @@ class _EtusivuState extends State<Etusivu> {
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     ArticleListPage(
-                                                        initialCategory: 'Kaikki'),
+                                                        initialCategory:
+                                                            'Kaikki'),
                                               ),
                                             );
                                           },
@@ -520,7 +522,8 @@ class _EtusivuState extends State<Etusivu> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => ArticleListPage(
-                                                  initialCategory: 'voi paremmin',
+                                                  initialCategory:
+                                                      'voi paremmin',
                                                 ),
                                               ),
                                             );
@@ -543,7 +546,8 @@ class _EtusivuState extends State<Etusivu> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => ArticleListPage(
-                                                  initialCategory: 'paranna kuntoa',
+                                                  initialCategory:
+                                                      'paranna kuntoa',
                                                 ),
                                               ),
                                             );
@@ -566,7 +570,8 @@ class _EtusivuState extends State<Etusivu> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => ArticleListPage(
-                                                  initialCategory: 'saavuta huippukunto',
+                                                  initialCategory:
+                                                      'saavuta huippukunto',
                                                 ),
                                               ),
                                             );
@@ -821,41 +826,13 @@ class _EtusivuState extends State<Etusivu> {
         },
       );
     } else if (icon == Icons.notifications) {
-      final notifications = <Map<String, String>>[
-        {"title": "Uusi haaste", "body": "Kokeile uutta kävelyhaastetta!"},
-        {"title": "Muistutus", "body": "Juomapulssi tänään vielä tekemättä."},
-        {"title": "Artikkeli", "body": "Lue: 5 tapaa parantaa yöuniasi."},
-      ];
-
       return PopupMenuButton<int>(
         icon: const Icon(Icons.notifications,
             color: Color.fromARGB(255, 71, 147, 210), size: 25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
         offset: const Offset(0, 40),
-        itemBuilder: (context) => [
-          for (var n in notifications)
-            PopupMenuItem(
-              enabled: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    n["title"] ?? "",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF485885),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    n["body"] ?? "",
-                    style: const TextStyle(color: Colors.black87, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-        ],
+        itemBuilder: (context) => _buildNotificationMenuItems(),
       );
     } else {
       return IconButton(
@@ -867,6 +844,115 @@ class _EtusivuState extends State<Etusivu> {
           ).showSnackBar(SnackBar(content: Text('$tooltip avattu')));
         },
       );
+    }
+  }
+
+  List<PopupMenuEntry<int>> _buildNotificationMenuItems() {
+    return [
+      PopupMenuItem(
+        enabled: false,
+        child: FutureBuilder<List<NotificationItem>>(
+          future: NotificationHistoryService().getLatestNotifications(10),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                width: 280,
+                height: 60,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final notifications = snapshot.data ?? [];
+
+            if (notifications.isEmpty) {
+              return const SizedBox(
+                width: 280,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Text(
+                    'Ei ilmoituksia',
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                ),
+              );
+            }
+
+            return SizedBox(
+              width: 280,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: notifications
+                    .map((n) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                n.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF485885),
+                                  fontSize: 13,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                n.body,
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  _formatTime(n.timestamp),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                              if (notifications.indexOf(n) <
+                                  notifications.length - 1)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Divider(
+                                    color: Colors.grey.shade300,
+                                    height: 1,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return 'juuri nyt';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min sitten';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} h sitten';
+    } else {
+      return '${difference.inDays} päivää sitten';
     }
   }
 

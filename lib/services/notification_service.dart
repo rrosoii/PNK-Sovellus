@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'notification_history_service.dart';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
@@ -58,7 +59,7 @@ class NotificationService {
     );
   }
 
-  /// Shows a notification for a new event.
+  /// Shows a notification for a new event and saves it to history.
   Future<void> showNewEventNotification(String title, {String? body}) async {
     const androidDetails = AndroidNotificationDetails(
       'event_channel',
@@ -70,12 +71,20 @@ class NotificationService {
     const iosDetails = DarwinNotificationDetails();
     const details =
         NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    final displayTitle = 'Uusi tapahtuma: $title';
+    final displayBody = body ?? 'Katso lisätietoja sovelluksesta.';
+
     await _plugin.show(
       3001,
-      'Uusi tapahtuma: $title',
-      body ?? 'Katso lisätietoja sovelluksesta.',
+      displayTitle,
+      displayBody,
       details,
     );
+
+    // Save to notification history
+    final historyService = NotificationHistoryService();
+    await historyService.addNotification(displayTitle, displayBody);
   }
 
   Future<void> scheduleHydrationReminder() async {
