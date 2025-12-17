@@ -6,6 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
 import 'package:pnksovellus/pages/etusivu.dart';
@@ -82,6 +84,42 @@ Future<void> _setupNotifications() async {
     final notificationService = NotificationService();
     await notificationService.init();
     await notificationService.scheduleHydrationReminder();
+    await notificationService.scheduleDailyExerciseReminder();
+
+    // Listen for new events and notify if enabled
+    final prefs = await SharedPreferences.getInstance();
+    bool notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    if (notificationsEnabled) {
+      DateTime lastCheck = DateTime.now();
+      FirebaseFirestore.instance
+          .collection('Tapahtumat')
+          .orderBy('date', descending: true)
+          .limit(1)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          final doc = snapshot.docs.first;
+          final data = doc.data() as Map<String, dynamic>;
+          final timestamp = data['date'];
+          DateTime eventDate = DateTime.now();
+          if (timestamp is Timestamp) {
+            eventDate = timestamp.toDate();
+          } else if (timestamp is int) {
+            eventDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
+          } else if (timestamp is String) {
+            eventDate = DateTime.tryParse(timestamp) ?? eventDate;
+          }
+          // Only notify for new events
+          if (eventDate.isAfter(lastCheck)) {
+            lastCheck = eventDate;
+            notificationService.showNewEventNotification(
+              data['title'] ?? 'Tapahtuma',
+              body: data['description'],
+            );
+          }
+        }
+      });
+    }
   } catch (e, st) {
     debugPrint('Notification setup failed: $e');
     debugPrintStack(stackTrace: st);

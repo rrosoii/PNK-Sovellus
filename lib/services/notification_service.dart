@@ -29,6 +29,55 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
+  /// Schedules a daily notification to remind the user to log exercise.
+  Future<void> scheduleDailyExerciseReminder() async {
+    const androidDetails = AndroidNotificationDetails(
+      'exercise_channel',
+      'Exercise Reminders',
+      channelDescription: 'Päivittäinen muistutus liikunnan kirjaamisesta',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const iosDetails = DarwinNotificationDetails();
+    const details =
+        NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    // Cancel any existing reminder with this ID to avoid duplicates
+    await _plugin.cancel(2001);
+
+    // Schedule for 20:00 (8 PM) every day
+    final now = DateTime.now();
+    final time = Time(20, 0, 0);
+    await _plugin.showDailyAtTime(
+      2001,
+      'Muistutus',
+      'Muista kirjata päivän liikunta! 💪',
+      time,
+      details,
+      androidAllowWhileIdle: true,
+    );
+  }
+
+  /// Shows a notification for a new event.
+  Future<void> showNewEventNotification(String title, {String? body}) async {
+    const androidDetails = AndroidNotificationDetails(
+      'event_channel',
+      'Tapahtumat',
+      channelDescription: 'Ilmoitukset uusista tapahtumista',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const iosDetails = DarwinNotificationDetails();
+    const details =
+        NotificationDetails(android: androidDetails, iOS: iosDetails);
+    await _plugin.show(
+      3001,
+      'Uusi tapahtuma: $title',
+      body ?? 'Katso lisätietoja sovelluksesta.',
+      details,
+    );
+  }
+
   Future<void> scheduleHydrationReminder() async {
     const androidDetails = AndroidNotificationDetails(
       'hydration_channel',

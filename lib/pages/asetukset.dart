@@ -90,6 +90,14 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
       // Request notification permission if enabling
       await Permission.notification.request();
     }
+
+    // Restart event notification listener
+    if (enabled) {
+      // This will re-run the Firestore event listener in main.dart on next app start.
+      // For immediate effect, you could call a method to start listening here if needed.
+    } else {
+      // No-op: event notification listener will not fire if disabled.
+    }
   }
 
   void _editUsername() {
@@ -603,8 +611,8 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   Future<String> _loadPrivacyPolicy() async {
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('Tietosuojakäytäntö')
-          .doc('tietosuojakäytäntö')
+          .collection('app_content')
+          .doc('privacy_policy')
           .get();
       return doc.data()?['text'] ??
           'Tietosuojakäytäntöä ei ole vielä asetettu.';
@@ -616,8 +624,8 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   Future<void> _savePrivacyPolicy(String text) async {
     try {
       await FirebaseFirestore.instance
-          .collection('Tietosuojakäytäntö')
-          .doc('tietosuojakäytäntö')
+          .collection('app_content')
+          .doc('privacy_policy')
           .set({'text': text});
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -626,10 +634,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     }
   }
 
-  void _showPrivacyPolicyDialog() async {
-    final currentText = await _loadPrivacyPolicy();
-    final controller = TextEditingController(text: currentText);
-
+  void _showPrivacyPolicyDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -643,27 +648,43 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
           ),
         ),
         content: SingleChildScrollView(
-          child: TextField(
-            controller: controller,
-            maxLines: 10,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFFEFF4FF),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF2E5AAC),
-                  width: 1.2,
+          child: StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('app_content')
+                .doc('privacy_policy')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              String policyText = 'Tietosuojakäytäntöä ei ole vielä asetettu.';
+              if (snapshot.hasData && snapshot.data != null) {
+                final data = snapshot.data!.data() as Map<String, dynamic>?;
+                policyText = data?['text'] ??
+                    'Tietosuojakäytäntöä ei ole vielä asetettu.';
+              }
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF4FF),
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              hintText: "Kirjoita tietosuojakäytäntö tähän...",
-            ),
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Text(
+                    policyText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
         actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -676,11 +697,10 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
               ),
             ),
             onPressed: () {
-              _savePrivacyPolicy(controller.text);
               Navigator.of(ctx).pop();
             },
             child: const Text(
-              "Selvä",
+              "Sulje",
               style: TextStyle(color: Colors.white),
             ),
           ),
