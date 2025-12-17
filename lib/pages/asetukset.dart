@@ -603,7 +603,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   Future<String> _loadPrivacyPolicy() async {
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('app_content')
+          .collection('Tietosuojakäytäntö')
           .doc('tietosuojakäytäntö')
           .get();
       return doc.data()?['text'] ??
@@ -616,7 +616,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
   Future<void> _savePrivacyPolicy(String text) async {
     try {
       await FirebaseFirestore.instance
-          .collection('app_content')
+          .collection('Tietosuojakäytäntö')
           .doc('tietosuojakäytäntö')
           .set({'text': text});
     } catch (e) {
