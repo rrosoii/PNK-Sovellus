@@ -7,6 +7,7 @@ import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:pnksovellus/pages/tietoa.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
@@ -574,6 +575,95 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     );
   }
 
+  Future<String> _loadPrivacyPolicy() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('app_content')
+          .doc('privacy_policy')
+          .get();
+      return doc.data()?['text'] ??
+          'Tietosuojakäytäntöä ei ole vielä asetettu.';
+    } catch (_) {
+      return 'Tietosuojakäytäntöä ei ole vielä asetettu.';
+    }
+  }
+
+  Future<void> _savePrivacyPolicy(String text) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('app_content')
+          .doc('privacy_policy')
+          .set({'text': text});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Virhe: $e')),
+      );
+    }
+  }
+
+  void _showPrivacyPolicyDialog() async {
+    final currentText = await _loadPrivacyPolicy();
+    final controller = TextEditingController(text: currentText);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Tietosuojakäytäntä",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF224D9C),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: controller,
+            maxLines: 10,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFEFF4FF),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2E5AAC),
+                  width: 1.2,
+                ),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              hintText: "Kirjoita tietosuojakäytäntö tähän...",
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF224D9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              _savePrivacyPolicy(controller.text);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text(
+              "Selvä",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -699,7 +789,11 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                           );
                         },
                       ),
-                      _buildRow("Tietosuojakäytäntä", Icons.chevron_right),
+                      _buildRow(
+                        "Tietosuojakäytäntä",
+                        Icons.chevron_right,
+                        onTap: _showPrivacyPolicyDialog,
+                      ),
                       const SizedBox(height: 35),
                       if (_isLoggedIn) ...[
                         Center(
