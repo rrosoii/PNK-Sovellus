@@ -119,12 +119,12 @@ class SupportBot {
 
     // ================= PAAVO NURMI CENTER =================
 
-    if (_any(text, ["ajanvara", "varaa aika", "aika"])) {
-      return "Ajanvarauksen voi tehdä nettisivuilla tai asiakaspalvelussa.";
+    if (_any(text, ["ajanvara", "varaa aika", "aika", "aja","varaa"])) {
+      return "Ajanvarauksen voi tehdä nettisivuilla osoitteesta https://pnk.fi/varauskalenteri/ tai soittamalla numeroon 045 783 11203 arkisin klo 8-16!";
     }
 
     if (_any(text, ["auki", "aukiolo"])) {
-      return "Asiakaspalvelu on arkisin klo 8–16. Käynnit vain ajanvarauksella.";
+      return "Olemme auki arkisin klo 8–16. Käynnit vain ajanvarauksella.";
     }
 
     if (_any(text, ["pnk", "nettisiv"])) {

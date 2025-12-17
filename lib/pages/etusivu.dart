@@ -507,11 +507,11 @@ class _EtusivuState extends State<Etusivu> {
                                         CategoryChip(
                                           icon: Icons.self_improvement,
                                           label: 'voi paremmin',
-                                          gradientColors: [
+                                          gradientColors: const [
                                             Color(0xFF74B9FF),
                                             Color(0xFF6CA7FF)
                                           ],
-                                          iconGradient: [
+                                          iconGradient: const [
                                             Color(0xFF5FA8FF),
                                             Color(0xFF2F7CFF)
                                           ],
@@ -526,15 +526,15 @@ class _EtusivuState extends State<Etusivu> {
                                             );
                                           },
                                         ),
-                                        SizedBox(width: 16),
+                                        const SizedBox(width: 16),
                                         CategoryChip(
                                           icon: Icons.directions_run,
                                           label: 'paranna kuntoa',
-                                          gradientColors: [
+                                          gradientColors: const [
                                             Color(0xFFC39BFF),
                                             Color(0xFFB28CFF)
                                           ],
-                                          iconGradient: [
+                                          iconGradient: const [
                                             Color(0xFFB785FF),
                                             Color(0xFF9F60FF)
                                           ],
@@ -549,15 +549,15 @@ class _EtusivuState extends State<Etusivu> {
                                             );
                                           },
                                         ),
-                                        SizedBox(width: 16),
+                                        const SizedBox(width: 16),
                                         CategoryChip(
                                           icon: Icons.emoji_events,
                                           label: 'saavuta huippukunto',
-                                          gradientColors: [
+                                          gradientColors: const [
                                             Color(0xFF7DEFA5),
                                             Color(0xFF57DB80)
                                           ],
-                                          iconGradient: [
+                                          iconGradient: const [
                                             Color(0xFF63E690),
                                             Color(0xFF34C967)
                                           ],

@@ -7,6 +7,7 @@ import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:pnksovellus/pages/tietoa.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pnksovellus/pages/home.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/routes/route_observer.dart';
@@ -341,25 +342,48 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     if (!confirm) return;
 
     try {
+      final uid = user.uid;
+
+      // Delete Firestore user document and related cloud data (if present)
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      } catch (e) {
+        // If deletion fails, log but continue to attempt account deletion
+        debugPrint('Failed to delete user doc: $e');
+      }
+
+      // Remove local stored profile data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('username');
+      await prefs.remove('avatar_path');
+      await prefs.remove('userProfile');
+      await prefs.remove('custom_activities');
+
+      // Finally delete Firebase Auth user
       await user.delete();
+
+      if (!mounted) return;
+
+      // Navigate back to homepage / start and clear navigation stack
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const Homepage()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      // Requires recent login
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Turvallisuussyistä kirjaudu sisään uudelleen ennen tilin poistamista.")),
+      );
+      debugPrint('Auth error during delete: $e');
+      return;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sinun täytyy kirjautua sisään uudelleen.")),
+        SnackBar(content: Text("Poisto epäonnistui: $e")),
       );
+      debugPrint('Error deleting account: $e');
       return;
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    prefs.remove('username');
-    prefs.remove('avatar_path');
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const Homepage()),
-      (route) => false,
-    );
   }
 
   Future<void> _showChangePasswordDialog() async {

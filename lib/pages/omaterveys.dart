@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison
+﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison, prefer_const_literals_to_create_immutables
 
 import 'dart:async';
 import 'dart:convert';
@@ -16,7 +16,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'package:pedometer/pedometer.dart';
-import 'package:pnksovellus/pages/asetukset.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
 
 final IconData defaultCustomIcon = Icons.star;
@@ -112,7 +111,6 @@ class _TrackerPageState extends State<TrackerPage> {
   // Statistics
   Map<String, int> _monthlyStats = {};
   String _mostCommonActivity = '';
-  double _avgStepsPerDay = 0;
 
   @override
   void initState() {
@@ -499,9 +497,9 @@ class _TrackerPageState extends State<TrackerPage> {
     // Find most common activity
     String mostCommon = '';
     int maxCount = 0;
-    activityCount.forEach((activity, count) {
-      if (count > maxCount) {
-        maxCount = count;
+    activityCount.forEach((activity, value) {
+      if (value > maxCount) {
+        maxCount = value;
         mostCommon = activity;
       }
     });
@@ -1281,10 +1279,6 @@ class _TrackerPageState extends State<TrackerPage> {
                             ),
                           ),
                         ),
-
-                      if (dayIcons.length > 3)
-                        const Icon(Icons.more_horiz,
-                            size: 10, color: Color(0xFF2E5AAC)),
                     ],
                   ),
                 ),
@@ -1576,18 +1570,25 @@ class _TrackerPageState extends State<TrackerPage> {
               ),
             ),
           ] else ...[
-            // dynamic list
-            ...logsForDay.asMap().entries.map((entry) {
-              final index = entry.key;
-              final e = entry.value;
+            // dynamic list with scrolling for many exercises
+            SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...logsForDay.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final e = entry.value;
 
-              return _buildDismissibleExercise(
-                index: index,
-                name: e['type'] ?? '',
-                time: e['duration'] ?? '',
-                dist: e['distance'] ?? '',
-              );
-            }).toList(),
+                    return _buildDismissibleExercise(
+                      index: index,
+                      name: e['type'] ?? '',
+                      time: e['duration'] ?? '',
+                      dist: e['distance'] ?? '',
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
 
             // Auto-create exercise from today's steps
             if (todaySteps > 0)

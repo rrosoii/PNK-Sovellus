@@ -3,6 +3,8 @@ import 'package:pnksovellus/pages/omaterveys.dart';
 import 'package:pnksovellus/pages/profile.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'support_bot.dart';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Simple in-memory store so chat history survives tab changes.
 class _ChatStore {
@@ -72,6 +74,60 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  // Keep recognizers so we can dispose them to avoid leaks
+  final List<TapGestureRecognizer> _linkRecognizers = [];
+
+  Widget _buildMessageText(String text, bool isUser) {
+    final baseStyle = TextStyle(
+      color: isUser ? Colors.white : Colors.black87,
+      fontSize: 15,
+      height: 1.3,
+    );
+
+    final urlRegex = RegExp(r'(https?:\/\/[^\s]+)');
+    final matches = urlRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return Text(text, style: baseStyle);
+    }
+
+    final spans = <TextSpan>[];
+    int lastIndex = 0;
+
+    for (final m in matches) {
+      if (m.start > lastIndex) {
+        spans.add(TextSpan(text: text.substring(lastIndex, m.start), style: baseStyle));
+      }
+
+      final url = text.substring(m.start, m.end);
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () async {
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        };
+
+      _linkRecognizers.add(recognizer);
+
+      spans.add(TextSpan(
+        text: url,
+        style: baseStyle.copyWith(
+          color: isUser ? Colors.white : Colors.blue,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: recognizer,
+      ));
+
+      lastIndex = m.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(text: text.substring(lastIndex), style: baseStyle));
+    }
+
+    return RichText(text: TextSpan(children: spans, style: baseStyle));
+  }
+
   Widget _buildTypingBubble() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -124,6 +180,10 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    for (final r in _linkRecognizers) {
+      r.dispose();
+    }
+    _linkRecognizers.clear();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -258,14 +318,7 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                               ],
                       ),
-                      child: Text(
-                        msg["text"] ?? "",
-                        style: TextStyle(
-                          color: isUser ? Colors.white : Colors.black87,
-                          fontSize: 15,
-                          height: 1.3,
-                        ),
-                      ),
+                      child: _buildMessageText(msg["text"] ?? "", isUser),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -355,6 +408,7 @@ String _formatTime(String iso) {
   String m = dt.minute.toString().padLeft(2, '0');
   return "$h:$m";
 }
+
 
 class TypingDots extends StatefulWidget {
   const TypingDots({super.key});
@@ -457,7 +511,8 @@ class _PulsingAvatarState extends State<PulsingAvatar>
       },
       child: const CircleAvatar(
         backgroundColor: Colors.white,
-        child: Icon(Icons.tag_faces, color: Color(0xFF2E5AAC)),
+        backgroundImage: AssetImage('lib/images/lissu_chatti.png'),
+        radius: 30,
       ),
     );
   }
