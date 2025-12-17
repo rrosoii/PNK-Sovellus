@@ -373,7 +373,9 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     } on FirebaseAuthException catch (e) {
       // Requires recent login
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Turvallisuussyistä kirjaudu sisään uudelleen ennen tilin poistamista.")),
+        const SnackBar(
+            content: Text(
+                "Turvallisuussyistä kirjaudu sisään uudelleen ennen tilin poistamista.")),
       );
       debugPrint('Auth error during delete: $e');
       return;
@@ -602,7 +604,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     try {
       final doc = await FirebaseFirestore.instance
           .collection('app_content')
-          .doc('privacy_policy')
+          .doc('tietosuojakäytäntö')
           .get();
       return doc.data()?['text'] ??
           'Tietosuojakäytäntöä ei ole vielä asetettu.';
@@ -615,7 +617,7 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     try {
       await FirebaseFirestore.instance
           .collection('app_content')
-          .doc('privacy_policy')
+          .doc('tietosuojakäytäntö')
           .set({'text': text});
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
