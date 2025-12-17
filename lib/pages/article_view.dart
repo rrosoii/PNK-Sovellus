@@ -2,6 +2,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'article_model.dart';
 
 class ArticleViewPage extends StatelessWidget {
@@ -32,6 +33,10 @@ class ArticleViewPage extends StatelessWidget {
               _HeaderCard(article: article),
               const SizedBox(height: 14),
               _ContentCard(article: article),
+              if (article.link.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _LinkCard(link: article.link),
+              ],
             ],
           ),
         ),
@@ -133,27 +138,152 @@ class _MetaPill extends StatelessWidget {
     required this.category,
   });
 
+  IconData _getCategoryIcon(String category) {
+    final normalized = category.toLowerCase().replaceAll(' ', '_');
+    switch (normalized) {
+      case 'voi_paremmin':
+      case 'voi paremmin':
+        return Icons.self_improvement;
+      case 'paranna_kuntoa':
+      case 'paranna kuntoa':
+        return Icons.directions_run;
+      case 'saavuta_huippukunto':
+      case 'saavuta huippukunto':
+        return Icons.emoji_events;
+      default:
+        return Icons.article_outlined;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final parts = [
-      if (author.isNotEmpty) author,
-      if (date.isNotEmpty) date,
-      if (category.isNotEmpty) category,
-    ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        parts.join('  |  '),
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (author.isNotEmpty) ...[
+            Text(
+              author,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            const Text('  |  ',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                )),
+          ],
+          if (date.isNotEmpty) ...[
+            Text(
+              date,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            if (category.isNotEmpty)
+              const Text('  |  ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  )),
+          ],
+          if (category.isNotEmpty)
+            Icon(
+              _getCategoryIcon(category),
+              color: Colors.white,
+              size: 16,
+            ),
+        ],
       ),
     );
   }
 }
+
+class _LinkCard extends StatelessWidget {
+  final String link;
+
+  const _LinkCard({required this.link});
+
+  Future<void> _launchUrl() async {
+    final Uri url = Uri.parse(link);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $link');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _launchUrl,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFF2E5AAC), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.link,
+              color: Color(0xFF2E5AAC),
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Lue lisää',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF5D6A7C),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    link,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF2E5AAC),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_outward,
+              color: Color(0xFF2E5AAC),
+              size: 18,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }

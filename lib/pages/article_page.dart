@@ -6,7 +6,9 @@ import 'article_service.dart';
 import 'article_view.dart';
 
 class ArticleListPage extends StatefulWidget {
-  const ArticleListPage({super.key});
+  final String? initialCategory;
+
+  const ArticleListPage({super.key, this.initialCategory});
 
   @override
   State<ArticleListPage> createState() => _ArticleListPageState();
@@ -14,16 +16,20 @@ class ArticleListPage extends StatefulWidget {
 
 class _ArticleListPageState extends State<ArticleListPage> {
   final ArticleService _service = ArticleService();
-  String selectedCategory = "Kaikki";
+  late String selectedCategory;
 
   final List<String> categories = [
     "Kaikki",
-    "Uni",
-    "Työ",
-    "Mieli",
-    "Ruoka",
-    "Stressi",
+    "voi paremmin",
+    "paranna kuntoa",
+    "saavuta huippukunto",
   ];
+  
+  @override
+  void initState() {
+    super.initState();
+    selectedCategory = widget.initialCategory ?? "Kaikki";
+  }
 
   Future<List<Article>> _loadArticles() {
     if (selectedCategory == "Kaikki") {
@@ -226,6 +232,23 @@ class _ArticleCard extends StatelessWidget {
 
   const _ArticleCard({required this.article, required this.onTap});
 
+  IconData _getCategoryIcon(String category) {
+    final normalized = category.toLowerCase().replaceAll(' ', '_');
+    switch (normalized) {
+      case 'voi_paremmin':
+      case 'voi paremmin':
+        return Icons.self_improvement;
+      case 'paranna_kuntoa':
+      case 'paranna kuntoa':
+        return Icons.directions_run;
+      case 'saavuta_huippukunto':
+      case 'saavuta huippukunto':
+        return Icons.emoji_events;
+      default:
+        return Icons.article_outlined;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -272,12 +295,10 @@ class _ArticleCard extends StatelessWidget {
                       color: const Color(0xFF5A8FF7).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      article.category,
-                      style: const TextStyle(
-                        color: Color(0xFF2E5AAC),
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Icon(
+                      _getCategoryIcon(article.category),
+                      size: 20,
+                      color: const Color(0xFF2E5AAC),
                     ),
                   ),
                 ],

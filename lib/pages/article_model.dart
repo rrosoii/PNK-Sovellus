@@ -9,6 +9,7 @@ class Article {
   final String category;
   final String content;
   final String imageUrl;
+  final String link;
 
   Article({
     required this.id,
@@ -18,6 +19,7 @@ class Article {
     required this.category,
     required this.content,
     required this.imageUrl,
+    this.link = '',
   });
 
   factory Article.fromFirestore(String id, Map<String, dynamic> data) {
@@ -40,6 +42,7 @@ class Article {
       category: data["category"] ?? "",
       content: data["content"] ?? "",
       imageUrl: data["imageUrl"] ?? "",
+      link: data["link"] ?? "",
     );
   }
 }

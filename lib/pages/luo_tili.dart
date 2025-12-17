@@ -2,6 +2,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pnksovellus/services/user_data_service.dart';
 
 import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/pages/home.dart';
@@ -38,6 +39,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _confirmController = TextEditingController();
 
   bool _loading = false;
+  final UserDataService _dataService = UserDataService();
 
   Future<void> _createAccount() async {
     final email = _emailController.text.trim();
@@ -60,6 +62,13 @@ class _SignUpPageState extends State<SignUpPage> {
         email: email,
         password: password,
       );
+
+      // Save first name as app nickname (persist locally and to Firestore)
+      final fullName = _nameController.text.trim();
+      if (fullName.isNotEmpty) {
+        final firstName = fullName.split(RegExp(r"\s+"))[0];
+        await _dataService.saveProfileName(firstName);
+      }
 
       Navigator.push(
         context,

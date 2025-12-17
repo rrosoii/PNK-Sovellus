@@ -11,7 +11,6 @@ import 'package:pnksovellus/services/user_data_service.dart';
 import 'package:pnksovellus/pages/kysely.dart';
 import 'package:pnksovellus/pages/all_challenges.dart';
 import 'package:pnksovellus/pages/chat.dart';
-import 'package:pnksovellus/pages/etusivu.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 
 class ProfilePage extends StatefulWidget {
