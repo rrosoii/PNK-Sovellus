@@ -3,15 +3,30 @@ import 'package:pnksovellus/pages/omaterveys.dart';
 import 'package:pnksovellus/pages/profile.dart';
 import 'package:pnksovellus/widgets/app_bottom_nav.dart';
 import 'support_bot.dart';
-import 'package:flutter/gestures.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-// Simple in-memory store so chat history survives tab changes.
+// ================= MEMORY STORE =================
+
+class ChatMessage {
+  final String sender;
+  final String? text;
+  final List<TextSpan>? spans;
+  final String time;
+
+  ChatMessage({
+    required this.sender,
+    this.text,
+    this.spans,
+    required this.time,
+  });
+}
+
 class _ChatStore {
-  final List<Map<String, String>> messages = [];
+  final List<ChatMessage> messages = [];
 }
 
 final _chatStore = _ChatStore();
+
+// ================= CHAT PAGE =================
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -25,38 +40,40 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  List<Map<String, String>> get messages => _chatStore.messages;
+  List<ChatMessage> get messages => _chatStore.messages;
 
   bool _botTyping = false;
+
+  // ================= SEND MESSAGE =================
 
   void sendMessage() {
     String text = _controller.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
-      messages.add({
-        "sender": "user",
-        "text": text,
-        "time": DateTime.now().toIso8601String(),
-      });
+      messages.add(ChatMessage(
+        sender: "user",
+        text: text,
+        time: DateTime.now().toIso8601String(),
+      ));
 
       _botTyping = true;
     });
 
     _scrollToBottom();
-
     _controller.clear();
 
     Future.delayed(const Duration(milliseconds: 900), () {
-      String reply = _bot.getReply(text);
+      List<TextSpan> replySpans = _bot.getReply(text);
 
       setState(() {
         _botTyping = false;
-        messages.add({
-          "sender": "bot",
-          "text": reply,
-          "time": DateTime.now().toIso8601String(),
-        });
+
+        messages.add(ChatMessage(
+          sender: "bot",
+          spans: replySpans,
+          time: DateTime.now().toIso8601String(),
+        ));
       });
 
       _scrollToBottom();
@@ -66,6 +83,7 @@ class _ChatPageState extends State<ChatPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+
       _scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 250),
@@ -74,98 +92,16 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  // Keep recognizers so we can dispose them to avoid leaks
-  final List<TapGestureRecognizer> _linkRecognizers = [];
-
-  Widget _buildMessageText(String text, bool isUser) {
-    final baseStyle = TextStyle(
-      color: isUser ? Colors.white : Colors.black87,
-      fontSize: 15,
-      height: 1.3,
-    );
-
-    final urlRegex = RegExp(r'(https?:\/\/[^\s]+)');
-    final matches = urlRegex.allMatches(text).toList();
-    if (matches.isEmpty) {
-      return Text(text, style: baseStyle);
-    }
-
-    final spans = <TextSpan>[];
-    int lastIndex = 0;
-
-    for (final m in matches) {
-      if (m.start > lastIndex) {
-        spans.add(TextSpan(text: text.substring(lastIndex, m.start), style: baseStyle));
-      }
-
-      final url = text.substring(m.start, m.end);
-      final recognizer = TapGestureRecognizer()
-        ..onTap = () async {
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        };
-
-      _linkRecognizers.add(recognizer);
-
-      spans.add(TextSpan(
-        text: url,
-        style: baseStyle.copyWith(
-          color: isUser ? Colors.white : Colors.blue,
-          decoration: TextDecoration.underline,
-        ),
-        recognizer: recognizer,
-      ));
-
-      lastIndex = m.end;
-    }
-
-    if (lastIndex < text.length) {
-      spans.add(TextSpan(text: text.substring(lastIndex), style: baseStyle));
-    }
-
-    return RichText(text: TextSpan(children: spans, style: baseStyle));
-  }
-
-  Widget _buildTypingBubble() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 80),
-        margin: const EdgeInsets.only(top: 6, bottom: 6, left: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomRight: Radius.circular(18),
-            bottomLeft: Radius.circular(6),
-          ),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 10,
-              color: Colors.black.withValues(alpha: 0.08),
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const TypingDots(),
-      ),
-    );
-  }
+  // ================= SWIPE NAVIGATION =================
 
   void _handleHorizontalSwipe(DragEndDetails details) {
-    const double swipeVelocityThreshold = 400; // pixels per second
+    const double swipeVelocityThreshold = 400;
     double velocity = details.velocity.pixelsPerSecond.dx;
 
     if (velocity.abs() > swipeVelocityThreshold) {
       if (velocity > 0) {
-        // Swipe right → go to Omaterveys
         _navigateTo(const ProfilePage());
       } else {
-        // Swipe left → go to Asetukset
         _navigateTo(const Omaterveys());
       }
     }
@@ -178,16 +114,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  @override
-  void dispose() {
-    for (final r in _linkRecognizers) {
-      r.dispose();
-    }
-    _linkRecognizers.clear();
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
+  // ================= BUILD =================
 
   @override
   Widget build(BuildContext context) {
@@ -202,12 +129,12 @@ class _ChatPageState extends State<ChatPage> {
             _buildInputBar(),
           ],
         ),
-        bottomNavigationBar: _buildBottomNav(),
+        bottomNavigationBar: const AppBottomNav(currentIndex: 2),
       ),
     );
   }
 
-  // ===================== HEADER =====================
+  // ================= HEADER =================
 
   PreferredSizeWidget _buildHeader() {
     return PreferredSize(
@@ -216,25 +143,18 @@ class _ChatPageState extends State<ChatPage> {
         decoration: const BoxDecoration(
           color: Color(0xFF2E5AAC),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 12,
-              color: Colors.black12,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: const SafeArea(
+        child: SafeArea(
           child: Row(
             children: [
-              PulsingAvatar(),
-              SizedBox(width: 10),
+              const PulsingAvatar(),
+              const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     "Lissu",
                     style: TextStyle(
                       color: Colors.white,
@@ -243,7 +163,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                   SizedBox(height: 3),
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.circle, size: 8, color: Colors.greenAccent),
                       SizedBox(width: 6),
@@ -262,7 +182,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  // ===================== MESSAGES =====================
+  // ================= MESSAGES =================
 
   Widget _buildMessages() {
     return ListView.builder(
@@ -271,7 +191,6 @@ class _ChatPageState extends State<ChatPage> {
       reverse: true,
       itemCount: messages.length + (_botTyping ? 1 : 0),
       itemBuilder: (context, index) {
-        // typing indicator visit
         if (_botTyping && index == 0) {
           return _buildTypingBubble();
         }
@@ -279,79 +198,97 @@ class _ChatPageState extends State<ChatPage> {
         final adjustedIndex = _botTyping ? index - 1 : index;
         final msg = messages[messages.length - 1 - adjustedIndex];
 
-        final bool isUser = msg["sender"] == "user";
-        final Color bubbleColor =
+        final bool isUser = msg.sender == "user";
+        final bubbleColor =
             isUser ? const Color(0xFF2E5AAC) : Colors.white;
 
-        return AnimatedOpacity(
-            opacity: 1,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-            child: Align(
-              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(
-                  crossAxisAlignment: isUser
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 280),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: bubbleColor,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(18),
-                          topRight: const Radius.circular(18),
-                          bottomLeft: Radius.circular(isUser ? 18 : 4),
-                          bottomRight: Radius.circular(isUser ? 4 : 18),
+        return Align(
+          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: bubbleColor,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isUser ? 18 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 18),
+                    ),
+                  ),
+                  child: msg.spans != null
+                      ? RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                              color:
+                                  isUser ? Colors.white : Colors.black87,
+                              fontSize: 15,
+                              height: 1.3,
+                            ),
+                            children: msg.spans!,
+                          ),
+                        )
+                      : Text(
+                          msg.text ?? "",
+                          style: TextStyle(
+                            color:
+                                isUser ? Colors.white : Colors.black87,
+                            fontSize: 15,
+                          ),
                         ),
-                        boxShadow: isUser
-                            ? []
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                      ),
-                      child: _buildMessageText(msg["text"] ?? "", isUser),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _formatTime(
-                          msg["time"] ?? DateTime.now().toIso8601String()),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
                 ),
-              ),
-            ));
+                const SizedBox(height: 6),
+                Text(
+                  _formatTime(msg.time),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
 
-  // ===================== INPUT BAR =====================
+  // ================= TYPING BUBBLE =================
+
+  Widget _buildTypingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 80),
+        margin: const EdgeInsets.only(top: 6, bottom: 6, left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(6),
+          ),
+        ),
+        child: const TypingDots(),
+      ),
+    );
+  }
+
+  // ================= INPUT =================
 
   Widget _buildInputBar() {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 12,
-            offset: Offset(0, -1),
-            color: Colors.black12,
-          ),
-        ],
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         top: false,
         child: Row(
@@ -366,7 +303,6 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 child: TextField(
                   controller: _controller,
-                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
                     hintText: "Kirjoita viesti",
                     border: InputBorder.none,
@@ -394,13 +330,9 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
-
-  // ===================== BOTTOM NAV =====================
-
-  Widget _buildBottomNav() {
-    return const AppBottomNav(currentIndex: 2);
-  }
 }
+
+// ================= HELPERS =================
 
 String _formatTime(String iso) {
   final dt = DateTime.parse(iso);
@@ -409,6 +341,7 @@ String _formatTime(String iso) {
   return "$h:$m";
 }
 
+// ================= TYPING DOTS =================
 
 class TypingDots extends StatefulWidget {
   const TypingDots({super.key});
@@ -419,14 +352,14 @@ class TypingDots extends StatefulWidget {
 
 class _TypingDotsState extends State<TypingDots>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
     )..repeat();
   }
 
@@ -436,48 +369,40 @@ class _TypingDotsState extends State<TypingDots>
     super.dispose();
   }
 
-  Widget _dot(int index) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final phase = (_controller.value * 3) - index;
-        final double bounce =
-            (phase < 0 || phase > 1) ? 0 : (1 - (phase - 0.5).abs() * 2);
-
-        return Transform.translate(
-          offset: Offset(0, -6 * bounce),
-          child: Opacity(
-            opacity: 0.4 + (bounce * 0.6),
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.8, end: 1.2).animate(
+            CurvedAnimation(
+              parent: _controller,
+              curve: Interval(
+                index * 0.15,
+                index * 0.15 + 0.6,
+                curve: Curves.easeInOut,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 8,
               width: 8,
+              height: 8,
               decoration: const BoxDecoration(
-                color: Color(0xFF2E5AAC),
                 shape: BoxShape.circle,
+                color: Colors.black54,
               ),
             ),
           ),
         );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 26,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          _dot(0),
-          _dot(1),
-          _dot(2),
-        ],
-      ),
+      }),
     );
   }
 }
+
+// ================= PULSING AVATAR =================
 
 class PulsingAvatar extends StatefulWidget {
   const PulsingAvatar({super.key});
@@ -489,37 +414,47 @@ class PulsingAvatar extends StatefulWidget {
 class _PulsingAvatarState extends State<PulsingAvatar>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this,
       duration: const Duration(seconds: 2),
+      vsync: this,
     )..repeat(reverse: true);
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (_, child) {
-        return Transform.scale(
-          scale: 1 + (_controller.value * 0.04),
-          child: child,
-        );
-      },
-      child: const CircleAvatar(
-        backgroundColor: Colors.white,
-        backgroundImage: AssetImage('lib/images/lissu_chatti.png'),
-        radius: 30,
-      ),
-    );
+    _animation = Tween<double>(begin: 0.8, end: 1.0).animate(_controller);
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _animation,
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 2,
+            )
+          ],
+        ),
+        child: const Center(
+          child: Icon(Icons.support_agent, color: Color(0xFF2E5AAC), size: 28),
+        ),
+      ),
+    );
   }
 }

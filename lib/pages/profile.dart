@@ -38,7 +38,7 @@ class _ProfilePageState extends State<ProfilePage> with RouteAware {
       "durationDays": 7
     },
     "exercise_daily_14": {
-      "title": "Liiku jokap\u00e4iv\u00e4",
+      "title": "Liiku joka päivä",
       "icon": Icons.fitness_center,
       "durationDays": 14
     },

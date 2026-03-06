@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison, prefer_const_literals_to_create_immutables
+﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison, prefer_const_literals_to_create_immutables, dead_code
 
 import 'dart:async';
 import 'dart:convert';
@@ -1205,10 +1205,6 @@ class _TrackerPageState extends State<TrackerPage> {
                       .toList()
                   : [];
 
-              // background layer (mood > today > selected)
-              Color bgColor = moodColor;
-              if (isToday) bgColor = const Color(0xFFCCE0FF);
-
               return GestureDetector(
                 onTap: () {
                   setState(() {
@@ -1233,7 +1229,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   margin:
                       const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                   decoration: BoxDecoration(
-                    color: bgColor, // apply mood/today tint (set above)
+                    color: moodColor,
                     borderRadius: BorderRadius.circular(50),
                     border: isSelected
                         ? Border.all(color: const Color(0xFF5A8FF7), width: 2)
@@ -1284,7 +1280,7 @@ class _TrackerPageState extends State<TrackerPage> {
                 ),
               );
             },
-          )
+          ),
         ],
       ),
     );

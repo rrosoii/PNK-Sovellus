@@ -1,4 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'notification_history_service.dart';
 
 class NotificationService {
@@ -6,6 +8,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
+    tz.initializeTimeZones();
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -47,15 +50,21 @@ class NotificationService {
     await _plugin.cancel(2001);
 
     // Schedule for 20:00 (8 PM) every day
-    final now = DateTime.now();
-    final time = Time(20, 0, 0);
-    await _plugin.showDailyAtTime(
+    final scheduleTime = DateTime.now().add(Duration(
+      hours: 20 - DateTime.now().hour,
+      minutes: -DateTime.now().minute,
+      seconds: -DateTime.now().second,
+    ));
+    await _plugin.zonedSchedule(
       2001,
       'Muistutus',
       'Muista kirjata päivän liikunta! 💪',
-      time,
+      tz.TZDateTime.from(scheduleTime, tz.local),
       details,
       androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 

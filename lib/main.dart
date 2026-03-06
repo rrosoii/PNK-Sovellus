@@ -99,7 +99,7 @@ Future<void> _setupNotifications() async {
           .listen((snapshot) {
         if (snapshot.docs.isNotEmpty) {
           final doc = snapshot.docs.first;
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final timestamp = data['date'];
           DateTime eventDate = DateTime.now();
           if (timestamp is Timestamp) {
