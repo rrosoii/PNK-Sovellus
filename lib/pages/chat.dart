@@ -145,16 +145,16 @@ class _ChatPageState extends State<ChatPage> {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: SafeArea(
+        child: const SafeArea(
           child: Row(
             children: [
-              const PulsingAvatar(),
-              const SizedBox(width: 10),
+              PulsingAvatar(),
+              SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     "Lissu",
                     style: TextStyle(
                       color: Colors.white,
@@ -163,7 +163,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                   SizedBox(height: 3),
-                  const Row(
+                  Row(
                     children: [
                       Icon(Icons.circle, size: 8, color: Colors.greenAccent),
                       SizedBox(width: 6),
@@ -199,8 +199,7 @@ class _ChatPageState extends State<ChatPage> {
         final msg = messages[messages.length - 1 - adjustedIndex];
 
         final bool isUser = msg.sender == "user";
-        final bubbleColor =
-            isUser ? const Color(0xFF2E5AAC) : Colors.white;
+        final bubbleColor = isUser ? const Color(0xFF2E5AAC) : Colors.white;
 
         return Align(
           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -212,8 +211,8 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 Container(
                   constraints: const BoxConstraints(maxWidth: 280),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: bubbleColor,
                     borderRadius: BorderRadius.only(
@@ -227,8 +226,7 @@ class _ChatPageState extends State<ChatPage> {
                       ? RichText(
                           text: TextSpan(
                             style: TextStyle(
-                              color:
-                                  isUser ? Colors.white : Colors.black87,
+                              color: isUser ? Colors.white : Colors.black87,
                               fontSize: 15,
                               height: 1.3,
                             ),
@@ -238,8 +236,7 @@ class _ChatPageState extends State<ChatPage> {
                       : Text(
                           msg.text ?? "",
                           style: TextStyle(
-                            color:
-                                isUser ? Colors.white : Colors.black87,
+                            color: isUser ? Colors.white : Colors.black87,
                             fontSize: 15,
                           ),
                         ),
@@ -269,9 +266,9 @@ class _ChatPageState extends State<ChatPage> {
         constraints: const BoxConstraints(maxWidth: 80),
         margin: const EdgeInsets.only(top: 6, bottom: 6, left: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: const BorderRadius.only(
+          borderRadius: BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomRight: Radius.circular(18),
