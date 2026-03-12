@@ -591,7 +591,7 @@ class _TrackerPageState extends State<TrackerPage> {
                     fontSize: 16,
                     color: Color(0xFF2E5AAC),
                   ),
-                ),
+                ) ,
               ],
             ),
           ),
