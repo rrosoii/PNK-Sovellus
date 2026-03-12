@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison, prefer_const_literals_to_create_immutables
+﻿// ignore_for_file: unused_local_variable, deprecated_member_use, prefer_const_constructors, prefer_const_declarations, unused_element, curly_braces_in_flow_control_structures, use_build_context_synchronously, unnecessary_import, unused_element_parameter, unnecessary_null_comparison, prefer_const_literals_to_create_immutables, dead_code
 
 import 'dart:async';
 import 'dart:convert';
@@ -87,6 +87,7 @@ class _TrackerPageState extends State<TrackerPage> {
   int todaySteps = 0;
   double todayDistanceKm = 0;
   double todayCalories = 0;
+  Map<int, int> stepsMap = {};
 
   int selectedMood = 2;
   Map<int, int> moodMap = {};
@@ -112,6 +113,8 @@ class _TrackerPageState extends State<TrackerPage> {
   Map<String, int> _monthlyStats = {};
   String _mostCommonActivity = '';
 
+  final Health _health = Health();
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +129,7 @@ class _TrackerPageState extends State<TrackerPage> {
         _loadMoodData(),
         _loadWaterData(),
         _loadExerciseData(),
+        _loadStepData(),
         _loadCustomActivities(),
       ]);
       _calculateMonthlyStats();
@@ -146,44 +150,59 @@ class _TrackerPageState extends State<TrackerPage> {
   Future<void> _initStepTracking() async {
     // Try to request Google Fit/Health permission
     await _requestGoogleHealthAccess();
+    await _fetchStepsForMonth(currentMonth);
     await _startStepTracking();
   }
 
-  Future<void> _requestGoogleHealthAccess() async {
+  Future<bool> _ensureHealthPermission() async {
     try {
-      final health = Health();
-      // Request authorization for step data
-      final authorized =
-          await health.requestAuthorization([HealthDataType.STEPS]);
-
-      if (authorized) {
-        debugPrint("Google Fit/Health access granted");
-        // Fetch today's steps from Google Fit
-        await _fetchTodayStepsFromHealthKit(health);
-      } else {
-        debugPrint("Google Fit/Health access denied, using pedometer only");
+      const types = [HealthDataType.STEPS];
+      const perms = [HealthDataAccess.READ];
+      bool? has = await _health.hasPermissions(types, permissions: perms);
+      if (has != true) {
+        has = await _health.requestAuthorization(types, permissions: perms);
       }
+      return has == true;
     } catch (e) {
-      debugPrint("Failed to request Google Fit access: $e");
+      debugPrint("Health permission check failed: $e");
+      return false;
     }
   }
 
-  Future<void> _fetchTodayStepsFromHealthKit(Health health) async {
+  Future<void> _requestGoogleHealthAccess() async {
+    final ok = await _ensureHealthPermission();
+    if (ok) {
+      debugPrint("Google Fit/Health access granted");
+      await _fetchTodayStepsFromHealthKit();
+    } else {
+      debugPrint("Google Fit/Health access denied, using pedometer only");
+    }
+  }
+
+  Future<int> _getStepsForDay(DateTime day) async {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    // Aggregated helper is more reliable across providers.
+    final steps = await _health.getTotalStepsInInterval(start, end);
+    return steps ?? 0;
+  }
+
+  Future<void> _fetchTodayStepsFromHealthKit() async {
     try {
       final now = DateTime.now();
-      final midnight = DateTime(now.year, now.month, now.day);
+      final steps = await _getStepsForDay(now);
 
-      final steps = await health.getTotalStepsInInterval(midnight, now);
-
-      if (steps != null && steps > 0) {
-        setState(() {
-          todaySteps = steps;
-          todayDistanceKm = _distanceFromSteps(todaySteps);
-          todayCalories = _caloriesFromSteps(todaySteps);
-        });
-        _dataService.recordStepsForDate(DateTime.now(), todaySteps);
-        debugPrint("Fetched $steps steps from Google Fit");
-      }
+      setState(() {
+        todaySteps = steps;
+        todayDistanceKm = _distanceFromSteps(todaySteps);
+        todayCalories = _caloriesFromSteps(todaySteps);
+        if (currentMonth.year == now.year && currentMonth.month == now.month) {
+          stepsMap[now.day] = steps;
+        }
+      });
+      _dataService.recordStepsForDate(DateTime.now(), todaySteps);
+      _saveStepData(forDate: now, steps: steps);
+      debugPrint("Fetched $steps steps from Google Fit");
     } catch (e) {
       debugPrint("Error fetching steps from Google Fit: $e");
     }
@@ -295,6 +314,136 @@ class _TrackerPageState extends State<TrackerPage> {
     }
   }
 
+  Future<Map<int, int>> _loadStepMapForMonth(DateTime month) async {
+    final normalizedMonth = DateTime(month.year, month.month, 1);
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_stepsLocalKey(normalizedMonth));
+      if (saved == null || saved.isEmpty) return {};
+
+      final temp = <int, int>{};
+      for (final pair in saved.split(",")) {
+        if (!pair.contains(":")) continue;
+        final parts = pair.split(":");
+        final day = int.tryParse(parts[0]);
+        final steps = int.tryParse(parts[1]);
+        if (day != null && steps != null) temp[day] = steps;
+      }
+      return temp;
+    }
+
+    try {
+      final docId = _stepsKey(normalizedMonth);
+      final doc = await _userHealthColl!.doc(docId).get();
+      final data = doc.data();
+
+      final temp = <int, int>{};
+      if (data != null && data['map'] is Map) {
+        (data['map'] as Map).forEach((k, v) {
+          final day = int.tryParse(k.toString());
+          final steps = int.tryParse(v.toString());
+          if (day != null && steps != null) temp[day] = steps;
+        });
+      }
+      return temp;
+    } catch (e) {
+      debugPrint("Failed to load steps: $e");
+      return {};
+    }
+  }
+
+  Future<void> _loadStepData() async {
+    final map = await _loadStepMapForMonth(currentMonth);
+    if (mounted) setState(() => stepsMap = map);
+  }
+
+  Future<void> _saveStepsForMonth(DateTime month, Map<int, int> map) async {
+    final monthStart = DateTime(month.year, month.month, 1);
+
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final enc = map.entries.map((e) => "${e.key}:${e.value}").join(",");
+      await prefs.setString(_stepsLocalKey(monthStart), enc);
+    } else {
+      try {
+        final docId = _stepsKey(monthStart);
+        await _userHealthColl!.doc(docId).set(
+          {'map': map.map((k, v) => MapEntry(k.toString(), v))},
+          SetOptions(merge: true),
+        );
+      } catch (e) {
+        debugPrint("Failed to save steps: $e");
+      }
+    }
+
+    if (monthStart.year == currentMonth.year &&
+        monthStart.month == currentMonth.month &&
+        mounted) {
+      setState(() => stepsMap = map);
+    }
+  }
+
+  Future<void> _fetchStepsForMonth(DateTime month) async {
+    final allowed = await _ensureHealthPermission();
+    if (!allowed) return;
+
+    final today = DateTime.now();
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final Map<int, int> monthSteps = {};
+
+    for (int day = 1; day <= daysInMonth; day++) {
+      final start = DateTime(month.year, month.month, day);
+      if (start.isAfter(DateTime(today.year, today.month, today.day))) break;
+      try {
+        final steps = await _getStepsForDay(start);
+        monthSteps[day] = steps;
+      } catch (e) {
+        debugPrint("Failed to fetch steps for $start: $e");
+      }
+    }
+
+    await _saveStepsForMonth(month, monthSteps);
+  }
+
+  Future<void> _saveStepData({DateTime? forDate, int? steps}) async {
+    final date = forDate ?? DateTime.now();
+    final monthStart = DateTime(date.year, date.month, 1);
+
+    Map<int, int> targetMap;
+    if (monthStart.year == currentMonth.year &&
+        monthStart.month == currentMonth.month) {
+      targetMap = Map<int, int>.from(stepsMap);
+    } else {
+      targetMap = await _loadStepMapForMonth(monthStart);
+    }
+
+    if (steps != null) {
+      targetMap[date.day] = steps;
+    }
+
+    if (!isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final enc = targetMap.entries.map((e) => "${e.key}:${e.value}").join(",");
+      await prefs.setString(_stepsLocalKey(monthStart), enc);
+    } else {
+      try {
+        final docId = _stepsKey(monthStart);
+        await _userHealthColl!.doc(docId).set(
+          {'map': targetMap.map((k, v) => MapEntry(k.toString(), v))},
+          SetOptions(merge: true),
+        );
+      } catch (e) {
+        debugPrint("Failed to save steps: $e");
+      }
+    }
+
+    if (monthStart.year == currentMonth.year &&
+        monthStart.month == currentMonth.month &&
+        mounted) {
+      setState(() => stepsMap = targetMap);
+    }
+  }
+
   Future<void> _startStepTracking() async {
     // Request pedometer/activity recognition permission
     final status = await Permission.activityRecognition.request();
@@ -310,12 +459,32 @@ class _TrackerPageState extends State<TrackerPage> {
           todaySteps = event.steps;
           todayDistanceKm = _distanceFromSteps(todaySteps);
           todayCalories = _caloriesFromSteps(todaySteps);
+          final now = DateTime.now();
+          if (currentMonth.year == now.year &&
+              currentMonth.month == now.month) {
+            stepsMap[now.day] = todaySteps;
+          }
         });
         _dataService.recordStepsForDate(DateTime.now(), todaySteps);
+        _saveStepData(forDate: DateTime.now(), steps: todaySteps);
       },
       onError: (e) => debugPrint("Pedometer error: $e"),
     );
   }
+
+  bool get _isSelectedToday {
+    final now = DateTime.now();
+    return selectedDay == now.day &&
+        currentMonth.month == now.month &&
+        currentMonth.year == now.year;
+  }
+
+  int get _currentDaySteps =>
+      _isSelectedToday ? todaySteps : (stepsMap[selectedDay] ?? 0);
+
+  double get _currentDayDistanceKm => _distanceFromSteps(_currentDaySteps);
+
+  double get _currentDayCalories => _caloriesFromSteps(_currentDaySteps);
 
   // ========================= DECORATIVE BALLS =========================
 
@@ -366,6 +535,7 @@ class _TrackerPageState extends State<TrackerPage> {
   String _moodLocalKey(DateTime date) => "moods_${_monthId(date)}";
   String _exerciseLocalKey(DateTime date) => "exercise_${_monthId(date)}";
   String _waterLocalKey(DateTime date) => "water_${_monthId(date)}";
+  String _stepsLocalKey(DateTime date) => "steps_${_monthId(date)}";
   String _legacyMoodKey(DateTime date) => "moods_${date.year}_${date.month}";
   String _legacyExerciseKey(DateTime date) =>
       "exercise_${date.year}_${date.month}";
@@ -373,6 +543,7 @@ class _TrackerPageState extends State<TrackerPage> {
   String _monthKey(DateTime date) =>
       "${date.year}_${date.month.toString().padLeft(2, '0')}";
   String _exerciseKey(DateTime date) => "exercise_${_monthId(date)}";
+  String _stepsKey(DateTime date) => "steps_${_monthId(date)}";
 
   bool get isLoggedIn => FirebaseAuth.instance.currentUser != null;
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -536,6 +707,8 @@ class _TrackerPageState extends State<TrackerPage> {
     _loadMoodData();
     _loadWaterData();
     _loadExerciseData();
+    _loadStepData();
+    _fetchStepsForMonth(currentMonth);
     _calculateMonthlyStats();
   }
 
@@ -546,6 +719,8 @@ class _TrackerPageState extends State<TrackerPage> {
     _loadMoodData();
     _loadWaterData();
     _loadExerciseData();
+    _loadStepData();
+    _fetchStepsForMonth(currentMonth);
     _calculateMonthlyStats();
   }
 
@@ -1015,7 +1190,7 @@ class _TrackerPageState extends State<TrackerPage> {
 
   Widget _buildStepArc() {
     // fallback: if health didn't work, stay with some default
-    final int displaySteps = todaySteps;
+    final int displaySteps = _currentDaySteps;
     return SizedBox(
       height: 170,
       width: double.infinity,
@@ -1058,7 +1233,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
                 Text(
-                  "${todayDistanceKm.toStringAsFixed(2)} km",
+                  "${_currentDayDistanceKm.toStringAsFixed(2)} km",
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1079,7 +1254,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
                 Text(
-                  "${todayCalories.toStringAsFixed(0)} kcal",
+                  "${_currentDayCalories.toStringAsFixed(0)} kcal",
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1205,10 +1380,6 @@ class _TrackerPageState extends State<TrackerPage> {
                       .toList()
                   : [];
 
-              // background layer (mood > today > selected)
-              Color bgColor = moodColor;
-              if (isToday) bgColor = const Color(0xFFCCE0FF);
-
               return GestureDetector(
                 onTap: () {
                   setState(() {
@@ -1233,7 +1404,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   margin:
                       const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                   decoration: BoxDecoration(
-                    color: bgColor, // apply mood/today tint (set above)
+                    color: moodColor,
                     borderRadius: BorderRadius.circular(50),
                     border: isSelected
                         ? Border.all(color: const Color(0xFF5A8FF7), width: 2)
@@ -1284,7 +1455,7 @@ class _TrackerPageState extends State<TrackerPage> {
                 ),
               );
             },
-          )
+          ),
         ],
       ),
     );
@@ -1591,7 +1762,7 @@ class _TrackerPageState extends State<TrackerPage> {
             ),
 
             // Auto-create exercise from today's steps
-            if (todaySteps > 0)
+            if (_currentDaySteps > 0)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
                 child: Center(
@@ -1602,8 +1773,8 @@ class _TrackerPageState extends State<TrackerPage> {
                       final autoEntry = <String, String>{
                         "type": "Kävely",
                         "duration": "0:30:00",
-                        "distance": todayDistanceKm.toStringAsFixed(2),
-                        "kcal": todayCalories.toStringAsFixed(0),
+                        "distance": _currentDayDistanceKm.toStringAsFixed(2),
+                        "kcal": _currentDayCalories.toStringAsFixed(0),
                         "start": "${now.hour.toString().padLeft(2, '0')}"
                             "."
                             "${now.minute.toString().padLeft(2, '0')}",

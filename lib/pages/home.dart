@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:pnksovellus/pages/log_in.dart';
 import 'package:pnksovellus/pages/luo_tili.dart';
 import 'package:pnksovellus/pages/etusivu.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Homepage extends StatelessWidget {
   const Homepage({super.key});
@@ -15,8 +17,110 @@ class Homepage extends StatelessWidget {
   }
 }
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkPopup();
+  }
+
+  Future<void> _checkPopup() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final hasShown = prefs.getBool('hasShownCodePopup') ?? false;
+
+      if (!hasShown) {
+        // fetch text from firebase
+        final doc = await FirebaseFirestore.instance
+            .collection('app_content')
+            .doc('alku_tietosuoja')
+            .get();
+
+        final privacyText = doc.data()?['text'] ?? "Tietosuojateksti puuttuu.";
+
+        if (mounted) {
+          _showPrivacyPopup(privacyText);
+        }
+      }
+    });
+  }
+
+  void _showPrivacyPopup(String text) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: const Color.fromARGB(255, 227, 235, 253),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Tietosuojakäytäntö',
+                  style: TextStyle(
+                    color: Color.fromRGBO(13, 59, 128, 1),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 260,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                          fontSize: 16, color: Color.fromRGBO(13, 59, 128, 1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E5AAC),
+                      shape: const StadiumBorder(),
+                    ),
+                    onPressed: () async {
+                      await prefs.setBool('hasShownCodePopup', true);
+                      if (mounted) Navigator.of(ctx).pop();
+                    },
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +131,6 @@ class WelcomePage extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            // decorative circles top-left
             Positioned(
               top: -30,
               left: -30,
@@ -52,25 +155,17 @@ class WelcomePage extends StatelessWidget {
                 ),
               ),
             ),
-
-            // main content
             Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // push content down so buttons/texts aren't too high
                 const SizedBox(height: 150),
-
-                // logo
                 Center(
                   child: Image.asset(
                     'lib/images/pnk-sininen-fi.png',
                     height: 250,
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
-                // welcome text
                 const Center(
                   child: Text(
                     'Tervetuloa!',
@@ -81,10 +176,7 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 80),
-
-                // primary button
                 Center(
                   child: SizedBox(
                     width: screenWidth * 0.67,
@@ -111,10 +203,7 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 6),
-
-                // small prompt + login
                 Center(
                   child: RichText(
                     text: TextSpan(
@@ -132,7 +221,7 @@ class WelcomePage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => (Login()),
+                                  builder: (context) => Login(),
                                 ),
                               );
                             },
@@ -141,8 +230,6 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // secondary bottom action
                 Center(
                   child: TextButton(
                     onPressed: () {
@@ -161,7 +248,6 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
               ],
             ),

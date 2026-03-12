@@ -90,6 +90,14 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
       // Request notification permission if enabling
       await Permission.notification.request();
     }
+
+    // Restart event notification listener
+    if (enabled) {
+      // This will re-run the Firestore event listener in main.dart on next app start.
+      // For immediate effect, you could call a method to start listening here if needed.
+    } else {
+      // No-op: event notification listener will not fire if disabled.
+    }
   }
 
   void _editUsername() {
@@ -373,7 +381,9 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     } on FirebaseAuthException catch (e) {
       // Requires recent login
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Turvallisuussyistä kirjaudu sisään uudelleen ennen tilin poistamista.")),
+        const SnackBar(
+            content: Text(
+                "Turvallisuussyistä kirjaudu sisään uudelleen ennen tilin poistamista.")),
       );
       debugPrint('Auth error during delete: $e');
       return;
@@ -598,6 +608,107 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
     );
   }
 
+  Future<String> _loadPrivacyPolicy() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('app_content')
+          .doc('privacy_policy')
+          .get();
+      return doc.data()?['text'] ??
+          'Tietosuojakäytäntöä ei ole vielä asetettu.';
+    } catch (_) {
+      return 'Tietosuojakäytäntöä ei ole vielä asetettu.';
+    }
+  }
+
+  Future<void> _savePrivacyPolicy(String text) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('app_content')
+          .doc('privacy_policy')
+          .set({'text': text});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Virhe: $e')),
+      );
+    }
+  }
+
+  void _showPrivacyPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Tietosuojakäytäntä",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF224D9C),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('app_content')
+                .doc('privacy_policy')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              String policyText = 'Tietosuojakäytäntöä ei ole vielä asetettu.';
+              if (snapshot.hasData && snapshot.data != null) {
+                final data = snapshot.data!.data() as Map<String, dynamic>?;
+                policyText = data?['text'] ??
+                    'Tietosuojakäytäntöä ei ole vielä asetettu.';
+              }
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF4FF),
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Text(
+                    policyText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF224D9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text(
+              "Sulje",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -723,7 +834,11 @@ class _AsetuksetPageState extends State<AsetuksetPage> with RouteAware {
                           );
                         },
                       ),
-                      _buildRow("Tietosuojakäytäntä", Icons.chevron_right),
+                      _buildRow(
+                        "Tietosuojakäytäntä",
+                        Icons.chevron_right,
+                        onTap: _showPrivacyPolicyDialog,
+                      ),
                       const SizedBox(height: 35),
                       if (_isLoggedIn) ...[
                         Center(
